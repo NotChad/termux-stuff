@@ -49,6 +49,3 @@ in process:
 Just download script [termux-makepkg](https://github.com/xeffyr/termux-makepkg/blob/master/termux-makepkg)
 and put it to `${PREFIX}/bin/makepkg` then do `chmod 700 ${PREFIX}/bin/makepkg`. Tool will automatically
 install needed dependencies (such as coreutils or clang) on first run.
-
-You can also install it as package from my [termux-extra-packages](https://github.com/xeffyr/termux-extra-packages)
-repository.
