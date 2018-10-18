@@ -1,6 +1,11 @@
-PACKAGE_NAME=links
-PACKAGE_VERSION=2.17
+#!/bin/sh
+
+PACKAGE_NAME="links"
+PACKAGE_DESCRIPTION="A text WWW browser, similar to Lynx"
+PACKAGE_HOMEPAGE="http://links.twibright.com/"
+PACKAGE_VERSION="2.17"
 PACKAGE_DEPENDS="libbz2, liblzma, openssl"
 PACKAGE_BUILD_DEPENDS="libbz2-dev, liblzma-dev, openssl-dev"
+
 PACKAGE_SOURCES=("http://links.twibright.com/download/links-$PACKAGE_VERSION.tar.gz")                 
 PACKAGE_SOURCES_SHA256=('180ef70c60129b5a591a39a3ea33920ba7d181a83109cb75b1772e54cd37ebbc')
