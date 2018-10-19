@@ -34,6 +34,12 @@ builder@localhost:~/termux-packages$ ./build-package.sh -f libandroid-support
 
 Since Termux Builder use QEMU, it will be slow. Building of big packages may take hours (if not days).
 
+To install built packages, do this (in Termux session):
+```
+cd ~/.termux-builder/home/builder/termux-packages/debs
+dpkg -i {PACKAGE_FILE}
+```
+
 ## Related links
 
 * https://github.com/termux/termux-app
