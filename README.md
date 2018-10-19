@@ -5,6 +5,8 @@ This is a [termux-packages](https://github.com/termux/termux-packages) build env
 
 Note: this project was created by request in https://github.com/termux/termux-packages/issues/2914.
 
+<p align="center"><img src="screenshot.jpg" width="60%"></p>
+
 ## How to install
 
 To install Termux Builder, follow these steps:
@@ -24,10 +26,15 @@ Wait until it finishes.
 
 ## How to use
 
-It's usage is simple. For example, building of package 'libandroid-support':
+It's usage is simple. For example, to build package 'libandroid-support':
 ```
 $ termux-builder
 builder@localhost:~/termux-packages$ ./build-package.sh -f libandroid-support
 ```
 
 Since Termux Builder use QEMU, it will be slow. Building of big packages may take hours (if not days).
+
+## Related links
+
+* https://github.com/termux/termux-app
+* https://github.com/termux/termux-packages
