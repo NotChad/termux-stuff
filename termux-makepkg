@@ -471,7 +471,7 @@ read_manifest() {
     if [ -n "${PACKAGE_VERSION}" ]; then
         if ! grep -qP '^[a-zA-Z0-9]+((\.?|\-?|\_?[a-zA-Z0-9]+)+)?$' <<< "${PACKAGE_VERSION}"; then
             error_mesg "Manifest error: invalid package version specified."
-            error_mesg "Package version can consist only from alphanumeric characters and dot. The dot character should not be placed to the beginning or ending of the package version."
+            error_mesg "Package version can consist only from alphanumeric characters, dot and symbols '-' and '_'. The dot, '-' and '_' characters should not be placed to the beginning or ending of the package version."
             exit 1
         fi
     else
