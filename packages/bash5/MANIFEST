@@ -39,6 +39,8 @@ PACKAGE_EXTRA_CONFIGURE_ARGS+=" bash_cv_dev_fd=whacky"
 # - https://github.com/termux/termux-app/issues/200
 PACKAGE_EXTRA_CONFIGURE_ARGS+=" bash_cv_getcwd_malloc=yes"
 
+PACKAGE_CONFIG_FILES=('etc/profile'
+                      'etc/bash.bashrc')
 
 PACKAGE_SOURCES=("https://mirrors.kernel.org/gnu/bash/bash-${PACKAGE_VERSION}.tar.gz"
                  "bash.patch"

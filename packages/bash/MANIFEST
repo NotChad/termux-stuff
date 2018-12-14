@@ -8,7 +8,7 @@ PACKAGE_HOMEPAGE="https://www.gnu.org/software/bash/"
 _MAIN_VERSION="4.4"
 _PATCH_VERSION="23"
 PACKAGE_VERSION="${_MAIN_VERSION}.${_PATCH_VERSION}"
-PACKAGE_REVISION="2"
+PACKAGE_REVISION="3"
 PACKAGE_DEPENDS="command-not-found, libandroid-support, ncurses, readline, termux-tools"
 PACKAGE_BUILD_DEPENDS="libandroid-support-dev, ncurses-dev, readline-dev"
 
@@ -35,6 +35,8 @@ PACKAGE_EXTRA_CONFIGURE_ARGS+=" bash_cv_dev_fd=whacky"
 # - https://github.com/termux/termux-app/issues/200
 PACKAGE_EXTRA_CONFIGURE_ARGS+=" bash_cv_getcwd_malloc=yes"
 
+PACKAGE_CONFIG_FILES=('etc/profile'
+                      'etc/bash.bashrc')
 
 PACKAGE_SOURCES=("https://mirrors.kernel.org/gnu/bash/bash-${_MAIN_VERSION}.tar.gz"
                  "bash.patch"
