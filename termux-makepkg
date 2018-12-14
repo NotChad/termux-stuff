@@ -65,7 +65,7 @@ fi
 readonly PROGRAM_NAME=$(basename "${0}")
 
 ## Version.
-declare -g -r PROGRAM_VERSION="v2.2-release"
+declare -g -r PROGRAM_VERSION="v2.3"
 
 ## Dependencies.
 declare -r -a MAKEPKG_DEPENDENCIES=(
@@ -469,9 +469,9 @@ read_manifest() {
 
     ## Check package version field.
     if [ -n "${PACKAGE_VERSION}" ]; then
-        if ! grep -qP '^[a-zA-Z0-9]+(?:(?:[-_.][a-zA-Z0-9]+)+)?$' <<< "${PACKAGE_VERSION}"; then
+        if ! grep -qP '^[a-zA-Z0-9]+(?:(?:[-.][a-zA-Z0-9]+)+)?$' <<< "${PACKAGE_VERSION}"; then
             error_mesg "Manifest error: invalid package version specified."
-            error_mesg "Package version can consist only from alphanumeric characters, dot and symbols '-' and '_'. The dot, '-' and '_' characters should not be placed to the beginning or ending of the package version."
+            error_mesg "Package version can consist only from alphanumeric characters, dot and symbol '-'. The dot and '_' characters should not be placed to the beginning or ending of the package version."
             exit 1
         fi
     else
