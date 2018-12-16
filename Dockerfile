@@ -28,5 +28,11 @@ RUN apk add shadow sudo && \
 RUN mkdir /data && chown builder:builder /data && \
     mkdir -p /opt/termux && chown builder:builder /opt/termux
 
+# Compile toolchain.
+COPY . /home/builder/termux-musl
+RUN chown builder:builder -Rh /home/builder/termux-musl && \
+    su - builder -c /home/builder/termux-musl/cross-toolchain/build-toolchain.sh && \
+    rm -rf /home/builder/termux-musl
+
 # Set work directory to our repository.
 WORKDIR /home/builder/termux-musl
