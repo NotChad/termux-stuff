@@ -16,7 +16,6 @@ TERMUX_CTARGET="aarch64-unknown-linux-musl"
 CROSS_TOOLCHAIN_PREFIX="/opt/termux/${TERMUX_CTARGET}"
 TERMUX_PREFIX="/data/data/com.termux/files/usr"
 
-mkdir -p "${CROSS_TOOLCHAIN_PREFIX}/${TERMUX_CTARGET}"
 mkdir -p "${TERMUX_PREFIX}"
 mkdir -p "${TERMUX_BUILD_DIR}"
 mkdir -p "${TERMUX_OUTPUT_DIR}"
