@@ -43,6 +43,15 @@ cd "${TERMUX_BUILD_DIR}/musl-${VERSION}" && {
 
     make
     make install DESTDIR="${TERMUX_BUILD_DIR}/musl-${VERSION}-install"
+
+    ## Create libssp_nonshared.a
+cat << EOF > __stack_chk_fail_local.c
+extern void __stack_chk_fail(void);
+void __attribute__((visibility ("hidden"))) __stack_chk_fail_local(void) { __stack_chk_fail(); }
+EOF
+    ${TERMUX_CTARGET}-gcc -c __stack_chk_fail_local.c
+    ar -r libssp_nonshared.a __stack_chk_fail_local.o
+    mv libssp_nonshared.a "${TERMUX_BUILD_DIR}/musl-${VERSION}-install/${TERMUX_PREFIX}/lib/libssp_nonshared.a"
 }
 
 cd "${TERMUX_BUILD_DIR}/musl-${VERSION}-install/${TERMUX_PREFIX}" && {

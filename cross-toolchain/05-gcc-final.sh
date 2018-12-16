@@ -30,6 +30,11 @@ cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}" && {
     done
     unset p
 
+    cd "${CROSS_TOOLCHAIN_PREFIX}/${TERMUX_CTARGET}" && {
+        rm -f usr && ln -s .. usr
+        cd -
+    }
+
     mkdir build && cd build
 
     ../configure \
@@ -48,7 +53,7 @@ cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}" && {
         --enable-__cxa_atexit \
         --enable-default-pie \
         --enable-cloog-backend \
-        --enable-languages=c \
+        --enable-languages=c,c++ \
         --with-arch=armv8-a \
         --with-abi=lp64 \
         --disable-libquadmath \
@@ -61,9 +66,9 @@ cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}" && {
         --disable-libgomp \
         --disable-libatomic \
         --disable-libitm \
-        --disable-threads \
-        --disable-shared \
-        --with-newlib \
+        --enable-threads \
+        --enable-shared \
+        --enable-tls \
         --with-system-zlib \
         --with-linker-hash-style=gnu
 
@@ -74,8 +79,8 @@ cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}" && {
 }
 
 cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}-install/${CROSS_TOOLCHAIN_PREFIX}" && {
-    rm -f "${TERMUX_OUTPUT_DIR}/gcc-bootstrap-cross.tar.gz"
-    tar zcf "${TERMUX_OUTPUT_DIR}/gcc-bootstrap-cross.tar.gz" bin include lib libexec share
+    rm -f "${TERMUX_OUTPUT_DIR}/gcc-final-cross.tar.gz"
+    tar zcf "${TERMUX_OUTPUT_DIR}/gcc-final-cross.tar.gz" aarch64-unknown-linux-musl bin include lib libexec share
 }
 
 do_cleanup

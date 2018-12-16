@@ -21,3 +21,10 @@ mkdir -p "${TERMUX_PREFIX}"
 mkdir -p "${TERMUX_BUILD_DIR}"
 mkdir -p "${TERMUX_OUTPUT_DIR}"
 mkdir -p "${TERMUX_SOURCE_CACHE_DIR}"
+
+## Add our cross-compiler to the PATH.
+export PATH="${PATH}:${CROSS_TOOLCHAIN_PREFIX}/bin"
+
+## CPP fix: some configure scripts search for 'cpp' in /lib but
+## Alpine Linux doesn't provide /lib/cpp. Only /usr/bin/cpp.
+export CPP="/usr/bin/cpp"
