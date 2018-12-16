@@ -11,7 +11,7 @@ rm -rf "${CROSS_TOOLCHAIN_PREFIX}" && mkdir "${CROSS_TOOLCHAIN_PREFIX}"
 echo "[*] Building Linux headers..."
 sh "${PKG_ROOT_DIR}/01-kernel-headers.sh"
 echo "[*] Installing Linux headers..."
-tar xf "${TERMUX_OUTPUT_DIR}/linux-headers.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}"
+tar xf "${TERMUX_OUTPUT_DIR}/linux-headers.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}/${TERMUX_CTARGET}"
 
 ## Install binutils.
 echo "[*] Building Binutils..."
@@ -35,7 +35,7 @@ tar xf "${TERMUX_OUTPUT_DIR}/musl-libc.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}/${T
 echo "[*] Building GCC (finalizing)..."
 sh "${PKG_ROOT_DIR}/05-gcc-final.sh"
 rm -rf "${CROSS_TOOLCHAIN_PREFIX}" && mkdir "${CROSS_TOOLCHAIN_PREFIX}"
-tar xf "${TERMUX_OUTPUT_DIR}/linux-headers.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}"
+tar xf "${TERMUX_OUTPUT_DIR}/linux-headers.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}/${TERMUX_CTARGET}"
 tar xf "${TERMUX_OUTPUT_DIR}/binutils-cross.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}"
 tar xf "${TERMUX_OUTPUT_DIR}/musl-libc.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}/${TERMUX_CTARGET}"
 tar xf "${TERMUX_OUTPUT_DIR}/gcc-final-cross.tar.gz" -C "${CROSS_TOOLCHAIN_PREFIX}"
