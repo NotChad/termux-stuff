@@ -79,6 +79,7 @@ cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}" && {
 }
 
 cd "${TERMUX_BUILD_DIR}/gcc-${VERSION}-install/${CROSS_TOOLCHAIN_PREFIX}" && {
+    scanelf -R . | grep -P 'ET_(EXEC|DYN)' | awk '{ print $2 }' | xargs -r file | grep x86-64 | cut -d: -f1 | xargs -r strip --strip-unneeded
     rm -f "${TERMUX_OUTPUT_DIR}/gcc-final-cross.tar.gz"
     tar zcf "${TERMUX_OUTPUT_DIR}/gcc-final-cross.tar.gz" aarch64-unknown-linux-musl bin include lib libexec share
 }
