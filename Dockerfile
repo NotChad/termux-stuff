@@ -15,8 +15,8 @@ RUN apk upgrade
 RUN apk add alpine-sdk
 
 # Install additional essential packages.
-RUN apk add bash bison flex gawk gmp-dev gmp-dev isl-dev mpc1-dev \
-    mpc1-dev mpfr-dev mpfr-dev texinfo xz zip zlib-dev zlib-dev
+RUN apk add bash bison findutils flex gawk gmp-dev isl-dev mpc1-dev \
+    mpfr-dev texinfo xz zip zlib-dev
 
 # Create user and add it to sudoers.
 RUN apk add shadow sudo && \
