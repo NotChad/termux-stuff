@@ -18,8 +18,6 @@ docker start "${CONTAINER_NAME}" > /dev/null 2> /dev/null || {
            --detach \
            --tty \
            --env "HOME=${CONTAINER_HOME}" \
-           --env "TERMUX_OUTPUT_DIR=${CONTAINER_HOME}/termux-musl/packages" \
-           --env "TERMUX_SOURCE_CACHE_DIR=${CONTAINER_HOME}/termux-musl/sources" \
            --volume "${REPOROOT}:${CONTAINER_HOME}/termux-musl" \
            "${IMAGE_NAME}"
 
