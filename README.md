@@ -27,4 +27,9 @@ Note that as target architecture only AArch64 is supported.
 
 ### Building packages
 
-Currently, there no any packages defined.
+Packages can be built with this command:
+```
+./build-package.sh {package}
+```
+
+Where '{package}' should be replaced with actual name of the package (e.g. bash). To see what packages are available, check directory [./packages](./packages).
