@@ -5,6 +5,8 @@ TERMUX_PKG_SRCURL=https://curl.haxx.se/download/curl-${TERMUX_PKG_VERSION}.tar.b
 TERMUX_PKG_SHA256=a308377dbc9a16b2e994abd55455e5f9edca4e31666f8f8fcfe7a1a4aea419b9
 TERMUX_PKG_DEPENDS="libnghttp2, musl, openssl"
 
+TERMUX_PKG_INCLUDE_IN_DEVPACKAGE="bin/curl-config share/man/man1/curl-config.1"
+
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 --enable-ntlm-wb=$TERMUX_PREFIX/bin/ntlm_auth
 --with-ca-bundle=$TERMUX_PREFIX/etc/tls/cert.pem
@@ -15,9 +17,3 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 --without-brotli
 --with-ssl
 "
-
-TERMUX_PKG_INCLUDE_IN_DEVPACKAGE="bin/curl-config share/man/man1/curl-config.1"
-
-termux_step_pre_configure() {
-    autoreconf -vif
-}

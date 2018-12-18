@@ -423,9 +423,6 @@ termux_step_start_build() {
 	echo "termux - building $TERMUX_PKG_NAME for arch $TERMUX_ARCH..."
 	test -t 1 && printf "\033]0;%s...\007" "$TERMUX_PKG_NAME"
 
-	# Avoid exporting PKG_CONFIG_LIBDIR until after termux_step_host_build.
-	export TERMUX_PKG_CONFIG_LIBDIR=$TERMUX_PREFIX/lib/pkgconfig
-
 	# Keep track of when build started so we can see what files have been created.
 	# We start by sleeping so that any generated files above (such as zlib.pc) get
 	# an older timestamp than the TERMUX_BUILD_TS_FILE.
@@ -511,8 +508,8 @@ termux_step_setup_toolchain() {
 	# We put this after system PATH to avoid picking up toolchain stripped python
 	export PATH=$PATH:$TERMUX_STANDALONE_TOOLCHAIN/bin
 
-	export CFLAGS=""
-	export CXXFLAGS=""
+	export CFLAGS="--sysroot=${TERMUX_PREFIX}"
+	export CXXFLAGS="${CFLAGS}"
 	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
 	export LDFLAGS="-L${TERMUX_PREFIX}/lib"
 
@@ -531,7 +528,7 @@ termux_step_setup_toolchain() {
 
 	# Setup pkg-config for cross-compiling:
 	export PKG_CONFIG=$TERMUX_STANDALONE_TOOLCHAIN/bin/${TERMUX_HOST_PLATFORM}-pkg-config
-	export PKG_CONFIG_LIBDIR="$TERMUX_PKG_CONFIG_LIBDIR"
+	export PKG_CONFIG_LIBDIR="${TERMUX_PREFIX}/lib/pkgconfig"
 
 	# Create a pkg-config wrapper. We use path to host pkg-config to
 	# avoid picking up a cross-compiled pkg-config later on.

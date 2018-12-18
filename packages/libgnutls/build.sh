@@ -15,7 +15,3 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 --with-included-libtasn1
 --without-p11-kit
 "
-
-termux_step_pre_configure() {
-    autoreconf -fvi
-}
