@@ -1,0 +1,413 @@
+diff -uNr musl-1.1.19/include/mntent.h musl-1.1.19.mod/include/mntent.h
+--- musl-1.1.19/include/mntent.h	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/include/mntent.h	2018-12-17 20:04:41.444547211 +0200
+@@ -8,7 +8,7 @@
+ #define __NEED_FILE
+ #include <bits/alltypes.h>
+ 
+-#define MOUNTED "/etc/mtab"
++#define MOUNTED "@TERMUX_PREFIX@/etc/mtab"
+ 
+ #define MNTTYPE_IGNORE	"ignore"
+ #define MNTTYPE_NFS	"nfs"
+diff -uNr musl-1.1.19/include/paths.h musl-1.1.19.mod/include/paths.h
+--- musl-1.1.19/include/paths.h	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/include/paths.h	2018-12-17 20:06:53.879312961 +0200
+@@ -1,31 +1,31 @@
+ #ifndef _PATHS_H
+ #define _PATHS_H
+ 
+-#define	_PATH_DEFPATH "/usr/local/bin:/bin:/usr/bin"
+-#define	_PATH_STDPATH "/bin:/usr/bin:/sbin:/usr/sbin"
++#define	_PATH_DEFPATH "@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets"
++#define	_PATH_STDPATH "@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets"
+ 
+-#define	_PATH_BSHELL	"/bin/sh"
++#define	_PATH_BSHELL	"@TERMUX_PREFIX@/bin/sh"
+ #define	_PATH_CONSOLE	"/dev/console"
+ #define	_PATH_DEVNULL	"/dev/null"
+ #define	_PATH_KLOG	"/proc/kmsg"
+-#define	_PATH_LASTLOG	"/var/log/lastlog"
+-#define	_PATH_MAILDIR	"/var/mail"
+-#define	_PATH_MAN	"/usr/share/man"
+-#define	_PATH_MNTTAB	"/etc/fstab"
+-#define	_PATH_MOUNTED	"/etc/mtab"
+-#define	_PATH_NOLOGIN	"/etc/nologin"
+-#define	_PATH_SENDMAIL	"/usr/sbin/sendmail"
+-#define	_PATH_SHADOW	"/etc/shadow"
+-#define	_PATH_SHELLS	"/etc/shells"
++#define	_PATH_LASTLOG	"@TERMUX_PREFIX@/var/log/lastlog"
++#define	_PATH_MAILDIR	"@TERMUX_PREFIX@/var/mail"
++#define	_PATH_MAN	"@TERMUX_PREFIX@/share/man"
++#define	_PATH_MNTTAB	"@TERMUX_PREFIX@/etc/fstab"
++#define	_PATH_MOUNTED	"@TERMUX_PREFIX@/etc/mtab"
++#define	_PATH_NOLOGIN	"@TERMUX_PREFIX@/etc/nologin"
++#define	_PATH_SENDMAIL	"@TERMUX_PREFIX@/bin/sendmail"
++#define	_PATH_SHADOW	"@TERMUX_PREFIX@/etc/shadow"
++#define	_PATH_SHELLS	"@TERMUX_PREFIX@/etc/shells"
+ #define	_PATH_TTY	"/dev/tty"
+ #define _PATH_UTMP	"/dev/null/utmp"
+-#define	_PATH_VI	"/usr/bin/vi"
++#define	_PATH_VI	"@TERMUX_PREFIX@/bin/applets/vi"
+ #define _PATH_WTMP	"/dev/null/wtmp"
+ 
+ #define	_PATH_DEV	"/dev/"
+-#define	_PATH_TMP	"/tmp/"
+-#define	_PATH_VARDB	"/var/lib/misc/"
+-#define	_PATH_VARRUN	"/var/run/"
+-#define	_PATH_VARTMP	"/var/tmp/"
++#define	_PATH_TMP	"@TERMUX_PREFIX@/tmp/"
++#define	_PATH_VARDB	"@TERMUX_PREFIX@/var/lib/misc/"
++#define	_PATH_VARRUN	"@TERMUX_PREFIX@/var/run/"
++#define	_PATH_VARTMP	"@TERMUX_PREFIX@/var/tmp/"
+ 
+ #endif
+diff -uNr musl-1.1.19/include/resolv.h musl-1.1.19.mod/include/resolv.h
+--- musl-1.1.19/include/resolv.h	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/include/resolv.h	2018-12-17 20:02:42.289944555 +0200
+@@ -64,7 +64,7 @@
+ #define	__RES	19960801
+ 
+ #ifndef _PATH_RESCONF
+-#define _PATH_RESCONF        "/etc/resolv.conf"
++#define _PATH_RESCONF        "@TERMUX_PREFIX@/etc/resolv.conf"
+ #endif
+ 
+ struct res_sym {
+diff -uNr musl-1.1.19/include/shadow.h musl-1.1.19.mod/include/shadow.h
+--- musl-1.1.19/include/shadow.h	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/include/shadow.h	2018-12-17 20:06:58.616031214 +0200
+@@ -10,7 +10,7 @@
+ 
+ #include <bits/alltypes.h>
+ 
+-#define	SHADOW "/etc/shadow"
++#define	SHADOW "@TERMUX_PREFIX@/etc/shadow"
+ 
+ struct spwd {
+ 	char *sp_namp;
+diff -uNr musl-1.1.19/include/stdio.h musl-1.1.19.mod/include/stdio.h
+--- musl-1.1.19/include/stdio.h	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/include/stdio.h	2018-12-17 20:13:38.419496627 +0200
+@@ -154,7 +154,7 @@
+ 
+ #if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+  || defined(_BSD_SOURCE)
+-#define P_tmpdir "/tmp"
++#define P_tmpdir "@TERMUX_PREFIX@/tmp"
+ char *tempnam(const char *, const char *);
+ #endif
+ 
+diff -uNr musl-1.1.19/ldso/dynlink.c musl-1.1.19.mod/ldso/dynlink.c
+--- musl-1.1.19/ldso/dynlink.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/ldso/dynlink.c	2018-12-17 20:12:09.271403974 +0200
+@@ -1020,7 +1020,7 @@
+ 					sys_path = "";
+ 				}
+ 			}
+-			if (!sys_path) sys_path = "/lib:/usr/local/lib:/usr/lib";
++			if (!sys_path) sys_path = "@TERMUX_PREFIX@/lib";
+ 			fd = path_open(name, sys_path, buf, sizeof buf);
+ 		}
+ 		pathname = buf;
+diff -uNr musl-1.1.19/src/conf/confstr.c musl-1.1.19.mod/src/conf/confstr.c
+--- musl-1.1.19/src/conf/confstr.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/conf/confstr.c	2018-12-17 20:16:57.823194088 +0200
+@@ -6,7 +6,7 @@
+ {
+ 	const char *s = "";
+ 	if (!name) {
+-		s = "/bin:/usr/bin";
++		s = "@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets";
+ 	} else if ((name&~4U)!=1 && name-_CS_POSIX_V6_ILP32_OFF32_CFLAGS>33U) {
+ 		errno = EINVAL;
+ 		return 0;
+diff -uNr musl-1.1.19/src/legacy/getusershell.c musl-1.1.19.mod/src/legacy/getusershell.c
+--- musl-1.1.19/src/legacy/getusershell.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/legacy/getusershell.c	2018-12-17 20:09:18.837567646 +0200
+@@ -2,7 +2,7 @@
+ #include <stdio.h>
+ #include <unistd.h>
+ 
+-static const char defshells[] = "/bin/sh\n/bin/csh\n";
++static const char defshells[] = "@TERMUX_PREFIX@/bin/applets/ash\n@TERMUX_PREFIX@/bin/bash\n@TERMUX_PREFIX@/bin/fish\n@TERMUX_PREFIX@/bin/sh\n@TERMUX_PREFIX@/bin/zsh\n";
+ 
+ static char *line;
+ static size_t linesize;
+@@ -16,7 +16,7 @@
+ 
+ void setusershell(void)
+ {
+-	if (!f) f = fopen("/etc/shells", "rbe");
++	if (!f) f = fopen("@TERMUX_PREFIX@/etc/shells", "rbe");
+ 	if (!f) f = fmemopen((void *)defshells, sizeof defshells - 1, "rb");
+ }
+ 
+diff -uNr musl-1.1.19/src/misc/wordexp.c musl-1.1.19.mod/src/misc/wordexp.c
+--- musl-1.1.19/src/misc/wordexp.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/misc/wordexp.c	2018-12-17 20:17:03.773128167 +0200
+@@ -108,7 +108,7 @@
+ 	if (!pid) {
+ 		if (p[1] == 1) fcntl(1, F_SETFD, 0);
+ 		else dup2(p[1], 1);
+-		execl("/bin/sh", "sh", "-c",
++		execl("@TERMUX_PREFIX@/bin/sh", "sh", "-c",
+ 			"eval \"printf %s\\\\\\\\0 x $1 $2\"",
+ 			"sh", s, redir, (char *)0);
+ 		_exit(1);
+diff -uNr musl-1.1.19/src/network/getnameinfo.c musl-1.1.19.mod/src/network/getnameinfo.c
+--- musl-1.1.19/src/network/getnameinfo.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/network/getnameinfo.c	2018-12-17 20:09:31.511040618 +0200
+@@ -50,7 +50,7 @@
+ 	char line[512], *p, *z;
+ 	unsigned char _buf[1032], atmp[16];
+ 	struct address iplit;
+-	FILE _f, *f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("@TERMUX_PREFIX@/etc/hosts", &_f, _buf, sizeof _buf);
+ 	if (!f) return;
+ 	if (family == AF_INET) {
+ 		memcpy(atmp+12, a, 4);
+@@ -90,7 +90,7 @@
+ 	unsigned long svport;
+ 	char line[128], *p, *z;
+ 	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/etc/services", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("@TERMUX_PREFIX@/etc/services", &_f, _buf, sizeof _buf);
+ 	if (!f) return;
+ 	while (fgets(line, sizeof line, f)) {
+ 		if ((p=strchr(line, '#'))) *p++='\n', *p=0;
+diff -uNr musl-1.1.19/src/network/lookup_name.c musl-1.1.19.mod/src/network/lookup_name.c
+--- musl-1.1.19/src/network/lookup_name.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/network/lookup_name.c	2018-12-17 20:09:36.901100036 +0200
+@@ -51,7 +51,7 @@
+ 	size_t l = strlen(name);
+ 	int cnt = 0, badfam = 0;
+ 	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("@TERMUX_PREFIX@/etc/hosts", &_f, _buf, sizeof _buf);
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff -uNr musl-1.1.19/src/network/lookup_serv.c musl-1.1.19.mod/src/network/lookup_serv.c
+--- musl-1.1.19/src/network/lookup_serv.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/network/lookup_serv.c	2018-12-17 20:09:41.271148233 +0200
+@@ -69,7 +69,7 @@
+ 	size_t l = strlen(name);
+ 
+ 	unsigned char _buf[1032];
+-	FILE _f, *f = __fopen_rb_ca("/etc/services", &_f, _buf, sizeof _buf);
++	FILE _f, *f = __fopen_rb_ca("@TERMUX_PREFIX@/etc/services", &_f, _buf, sizeof _buf);
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff -uNr musl-1.1.19/src/network/resolvconf.c musl-1.1.19.mod/src/network/resolvconf.c
+--- musl-1.1.19/src/network/resolvconf.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/network/resolvconf.c	2018-12-17 20:03:00.466803475 +0200
+@@ -17,7 +17,7 @@
+ 	conf->attempts = 2;
+ 	if (search) *search = 0;
+ 
+-	f = __fopen_rb_ca("/etc/resolv.conf", &_f, _buf, sizeof _buf);
++	f = __fopen_rb_ca("@TERMUX_PREFIX@/etc/resolv.conf", &_f, _buf, sizeof _buf);
+ 	if (!f) switch (errno) {
+ 	case ENOENT:
+ 	case ENOTDIR:
+diff -uNr musl-1.1.19/src/passwd/getgr_a.c musl-1.1.19.mod/src/passwd/getgr_a.c
+--- musl-1.1.19/src/passwd/getgr_a.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/getgr_a.c	2018-12-17 20:09:48.551228545 +0200
+@@ -26,7 +26,7 @@
+ 	*res = 0;
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+-	f = fopen("/etc/group", "rbe");
++	f = fopen("@TERMUX_PREFIX@/etc/group", "rbe");
+ 	if (!f) {
+ 		rv = errno;
+ 		goto done;
+diff -uNr musl-1.1.19/src/passwd/getgrent.c musl-1.1.19.mod/src/passwd/getgrent.c
+--- musl-1.1.19/src/passwd/getgrent.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/getgrent.c	2018-12-17 20:09:53.524616769 +0200
+@@ -16,7 +16,7 @@
+ {
+ 	struct group *res;
+ 	size_t size=0, nmem=0;
+-	if (!f) f = fopen("/etc/group", "rbe");
++	if (!f) f = fopen("@TERMUX_PREFIX@/etc/group", "rbe");
+ 	if (!f) return 0;
+ 	__getgrent_a(f, &gr, &line, &size, &mem, &nmem, &res);
+ 	return res;
+diff -uNr musl-1.1.19/src/passwd/getgrouplist.c musl-1.1.19.mod/src/passwd/getgrouplist.c
+--- musl-1.1.19/src/passwd/getgrouplist.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/getgrouplist.c	2018-12-17 20:10:01.928042896 +0200
+@@ -42,7 +42,7 @@
+ 	}
+ 	fclose(f);
+ 
+-	f = fopen("/etc/group", "rbe");
++	f = fopen("@TERMUX_PREFIX@/etc/group", "rbe");
+ 	if (!f && errno != ENOENT && errno != ENOTDIR)
+ 		goto cleanup;
+ 
+diff -uNr musl-1.1.19/src/passwd/getpw_a.c musl-1.1.19.mod/src/passwd/getpw_a.c
+--- musl-1.1.19/src/passwd/getpw_a.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/getpw_a.c	2018-12-17 20:10:05.638083882 +0200
+@@ -27,7 +27,7 @@
+ 
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+ 
+-	f = fopen("/etc/passwd", "rbe");
++	f = fopen("@TERMUX_PREFIX@/etc/passwd", "rbe");
+ 	if (!f) {
+ 		rv = errno;
+ 		goto done;
+diff -uNr musl-1.1.19/src/passwd/getpwent.c musl-1.1.19.mod/src/passwd/getpwent.c
+--- musl-1.1.19/src/passwd/getpwent.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/getpwent.c	2018-12-17 20:10:10.404803216 +0200
+@@ -16,7 +16,7 @@
+ struct passwd *getpwent()
+ {
+ 	struct passwd *res;
+-	if (!f) f = fopen("/etc/passwd", "rbe");
++	if (!f) f = fopen("@TERMUX_PREFIX@/etc/passwd", "rbe");
+ 	if (!f) return 0;
+ 	__getpwent_a(f, &pw, &line, &size, &res);
+ 	return res;
+diff -uNr musl-1.1.19/src/passwd/getspnam_r.c musl-1.1.19.mod/src/passwd/getspnam_r.c
+--- musl-1.1.19/src/passwd/getspnam_r.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/getspnam_r.c	2018-12-17 20:10:19.334901937 +0200
+@@ -79,7 +79,7 @@
+ 		return errno = ERANGE;
+ 
+ 	/* Protect against truncation */
+-	if (snprintf(path, sizeof path, "/etc/tcb/%s/shadow", name) >= sizeof path)
++	if (snprintf(path, sizeof path, "@TERMUX_PREFIX@/etc/tcb/%s/shadow", name) >= sizeof path)
+ 		return errno = EINVAL;
+ 
+ 	fd = open(path, O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+@@ -93,7 +93,7 @@
+ 			return errno;
+ 		}
+ 	} else {
+-		f = fopen("/etc/shadow", "rbe");
++		f = fopen("@TERMUX_PREFIX@/etc/shadow", "rbe");
+ 		if (!f) return errno;
+ 	}
+ 
+diff -uNr musl-1.1.19/src/passwd/nscd_query.c musl-1.1.19.mod/src/passwd/nscd_query.c
+--- musl-1.1.19/src/passwd/nscd_query.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/passwd/nscd_query.c	2018-12-17 20:12:48.163853661 +0200
+@@ -12,7 +12,7 @@
+ 	char sun_path[21];
+ } addr = {
+ 	AF_UNIX,
+-	"/var/run/nscd/socket"
++	"@TERMUX_PREFIX@/var/run/nscd/socket"
+ };
+ 
+ FILE *__nscd_query(int32_t req, const char *key, int32_t *buf, size_t len, int *swap)
+diff -uNr musl-1.1.19/src/process/execvp.c musl-1.1.19.mod/src/process/execvp.c
+--- musl-1.1.19/src/process/execvp.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/process/execvp.c	2018-12-17 20:11:24.678959243 +0200
+@@ -19,7 +19,7 @@
+ 	if (strchr(file, '/'))
+ 		return execve(file, argv, envp);
+ 
+-	if (!path) path = "/usr/local/bin:/bin:/usr/bin";
++	if (!path) path = "@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets";
+ 	k = strnlen(file, NAME_MAX+1);
+ 	if (k > NAME_MAX) {
+ 		errno = ENAMETOOLONG;
+diff -uNr musl-1.1.19/src/process/system.c musl-1.1.19.mod/src/process/system.c
+--- musl-1.1.19/src/process/system.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/process/system.c	2018-12-17 20:17:10.669719857 +0200
+@@ -33,7 +33,7 @@
+ 	posix_spawnattr_setsigmask(&attr, &old);
+ 	posix_spawnattr_setsigdefault(&attr, &reset);
+ 	posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF|POSIX_SPAWN_SETSIGMASK);
+-	ret = posix_spawn(&pid, "/bin/sh", 0, &attr,
++	ret = posix_spawn(&pid, "@TERMUX_PREFIX@/bin/sh", 0, &attr,
+ 		(char *[]){"sh", "-c", (char *)cmd, 0}, __environ);
+ 	posix_spawnattr_destroy(&attr);
+ 
+diff -uNr musl-1.1.19/src/stdio/popen.c musl-1.1.19.mod/src/stdio/popen.c
+--- musl-1.1.19/src/stdio/popen.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/stdio/popen.c	2018-12-17 20:17:16.029662624 +0200
+@@ -51,7 +51,7 @@
+ 	e = ENOMEM;
+ 	if (!posix_spawn_file_actions_init(&fa)) {
+ 		if (!posix_spawn_file_actions_adddup2(&fa, p[1-op], 1-op)) {
+-			if (!(e = posix_spawn(&pid, "/bin/sh", &fa, 0,
++			if (!(e = posix_spawn(&pid, "@TERMUX_PREFIX@/bin/sh", &fa, 0,
+ 			    (char *[]){ "sh", "-c", (char *)cmd, 0 }, __environ))) {
+ 				posix_spawn_file_actions_destroy(&fa);
+ 				f->pipe_pid = pid;
+diff -uNr musl-1.1.19/src/stdio/tmpfile.c musl-1.1.19.mod/src/stdio/tmpfile.c
+--- musl-1.1.19/src/stdio/tmpfile.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/stdio/tmpfile.c	2018-12-17 20:13:50.099276561 +0200
+@@ -8,7 +8,7 @@
+ 
+ FILE *tmpfile(void)
+ {
+-	char s[] = "/tmp/tmpfile_XXXXXX";
++	char s[] = "@TERMUX_PREFIX@/tmp/tmpfile_XXXXXX";
+ 	int fd;
+ 	FILE *f;
+ 	int try;
+diff -uNr musl-1.1.19/src/stdio/tmpnam.c musl-1.1.19.mod/src/stdio/tmpnam.c
+--- musl-1.1.19/src/stdio/tmpnam.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/stdio/tmpnam.c	2018-12-17 20:13:46.692673417 +0200
+@@ -12,7 +12,7 @@
+ char *tmpnam(char *buf)
+ {
+ 	static char internal[L_tmpnam];
+-	char s[] = "/tmp/tmpnam_XXXXXX";
++	char s[] = "@TERMUX_PREFIX@/tmp/tmpnam_XXXXXX";
+ 	int try;
+ 	int r;
+ 	for (try=0; try<MAXTRIES; try++) {
+diff -uNr musl-1.1.19/src/thread/sem_open.c musl-1.1.19.mod/src/thread/sem_open.c
+--- musl-1.1.19/src/thread/sem_open.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/thread/sem_open.c	2018-12-17 20:15:37.824198006 +0200
+@@ -32,7 +32,7 @@
+ 	int fd, i, e, slot, first=1, cnt, cs;
+ 	sem_t newsem;
+ 	void *map;
+-	char tmp[64];
++	char tmp[256];
+ 	struct timespec ts;
+ 	struct stat st;
+ 	char buf[NAME_MAX+10];
+@@ -110,7 +110,7 @@
+ 		/* Create a temp file with the new semaphore contents
+ 		 * and attempt to atomically link it as the new name */
+ 		clock_gettime(CLOCK_REALTIME, &ts);
+-		snprintf(tmp, sizeof(tmp), "/dev/shm/tmp-%d", (int)ts.tv_nsec);
++		snprintf(tmp, sizeof(tmp), "@TERMUX_PREFIX@/tmp/sem_open_tmp-%d", (int)ts.tv_nsec);
+ 		fd = open(tmp, O_CREAT|O_EXCL|FLAGS, mode);
+ 		if (fd < 0) {
+ 			if (errno == EEXIST) continue;
+diff -uNr musl-1.1.19/src/time/__tz.c musl-1.1.19.mod/src/time/__tz.c
+--- musl-1.1.19/src/time/__tz.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/time/__tz.c	2018-12-17 20:10:53.095275639 +0200
+@@ -122,10 +122,10 @@
+ 	const unsigned char *map = 0;
+ 	size_t i;
+ 	static const char search[] =
+-		"/usr/share/zoneinfo/\0/share/zoneinfo/\0/etc/zoneinfo/\0";
++		"@TERMUX_PREFIX@/share/zoneinfo/\0@TERMUX_PREFIX@/etc/zoneinfo/\0";
+ 
+ 	s = getenv("TZ");
+-	if (!s) s = "/etc/localtime";
++	if (!s) s = "@TERMUX_PREFIX@/etc/localtime";
+ 	if (!*s) s = __utc;
+ 
+ 	if (old_tz && !strcmp(s, old_tz)) return;
+@@ -151,7 +151,7 @@
+ 	if (*s == ':' || ((p=strchr(s, '/')) && !memchr(s, ',', p-s))) {
+ 		if (*s == ':') s++;
+ 		if (*s == '/' || *s == '.') {
+-			if (!libc.secure || !strcmp(s, "/etc/localtime"))
++			if (!libc.secure || !strcmp(s, "@TERMUX_PREFIX@/etc/localtime"))
+ 				map = __map_file(s, &map_size);
+ 		} else {
+ 			size_t l = strlen(s);

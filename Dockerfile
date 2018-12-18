@@ -15,8 +15,12 @@ RUN apk upgrade
 RUN apk add alpine-sdk
 
 # Install additional essential packages.
-RUN apk add bash bison coreutils diffutils findutils flex gawk gmp-dev grep \
-    isl-dev mpc1-dev mpfr-dev ncurses python3 sed texinfo xz zip zlib-dev
+RUN apk add autoconf automake bash bison coreutils cmake diffutils dpkg findutils \
+    flex gawk gettext gettext-dev gmp-dev grep isl-dev libtool mpc1-dev mpfr-dev \
+    ncurses ncurses-dev ninja python3 sed texinfo xz zip zlib-dev
+
+# Install developer tools.
+RUN apk add nano the_silver_searcher patchutils
 
 # Create user and add it to sudoers.
 RUN apk add shadow sudo && \
@@ -33,6 +37,10 @@ COPY . /home/builder/termux-musl
 RUN chown builder:builder -Rh /home/builder/termux-musl && \
     su - builder -c /home/builder/termux-musl/cross-toolchain/build-toolchain.sh && \
     rm -rf /home/builder/termux-musl /home/builder/.builddir /home/builder/builder-output /home/builder/source-cache
+
+# Prevent using for ldconfig by libtool.
+COPY ./scripts/fake-ldconfig.sh /usr/local/bin/ldconfig
+RUN chmod 755 /usr/local/bin/ldconfig
 
 # Set work directory to our repository.
 WORKDIR /home/builder/termux-musl

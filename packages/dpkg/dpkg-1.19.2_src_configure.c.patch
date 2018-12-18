@@ -1,0 +1,16 @@
+diff -uNr dpkg-1.19.2/src/configure.c dpkg-1.19.2.mod/src/configure.c
+--- dpkg-1.19.2/src/configure.c	2018-10-08 12:43:48.000000000 +0300
++++ dpkg-1.19.2.mod/src/configure.c	2018-12-17 18:31:28.146347233 +0200
+@@ -506,8 +506,10 @@
+ 			        pkg_name(pkg, pnaw_nonambig), cdr2.buf,
+ 			        strerror(errno));
+ 		if (!(what & CFOF_USER_DEL))
+-			if (link(cdr.buf, cdr2.buf))
+-				warning(_("%s: failed to link '%.250s' to '%.250s': %s"),
++			/** Termux modification: Use rename(2) instead of link(2), to avoid hard
++			    links which does not work on Android 6.0 or later. */
++			if (rename(cdr.buf, cdr2.buf))
++				warning(_("%s: failed to rename '%.250s' to '%.250s': %s"),
+ 				        pkg_name(pkg, pnaw_nonambig), cdr.buf,
+ 				        cdr2.buf, strerror(errno));
+ 		/* Fall through. */

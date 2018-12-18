@@ -1,0 +1,24 @@
+diff -uNr apt-1.4.8/methods/connect.cc apt-1.4.8.mod/methods/connect.cc
+--- apt-1.4.8/methods/connect.cc	2017-09-13 19:47:33.000000000 +0300
++++ apt-1.4.8.mod/methods/connect.cc	2018-12-17 23:09:12.554394282 +0200
+@@ -129,7 +129,7 @@
+ 
+    // Check the socket for an error condition
+    unsigned int Err;
+-   unsigned int Len = sizeof(Err);
++   socklen_t Len = sizeof(Err);
+    if (getsockopt(Fd,SOL_SOCKET,SO_ERROR,&Err,&Len) != 0)
+       return _error->Errno("getsockopt",_("Failed"));
+    
+@@ -301,7 +301,10 @@
+    if(LastHost != Host || LastPort != Port)
+    {
+       SrvRecords.clear();
+-      if (_config->FindB("Acquire::EnableSrvRecords", true) == true)
++      /* Disable by default in Termux due to it breaking on (some) HTC
++         devices (https://github.com/termux/termux-packages/issues/99). */
++	
++	 if (_config->FindB("Acquire::EnableSrvRecords", false) == true)
+       {
+          GetSrvRecords(Host, DefPort, SrvRecords);
+ 	 // RFC2782 defines that a lonely '.' target is an abort reason

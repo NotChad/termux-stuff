@@ -1,0 +1,25 @@
+diff -uNr pinentry-1.1.0/pinentry/pinentry.c pinentry-1.1.0.mod/pinentry/pinentry.c
+--- pinentry-1.1.0/pinentry/pinentry.c	2017-12-03 18:13:15.000000000 +0200
++++ pinentry-1.1.0.mod/pinentry/pinentry.c	2018-12-18 01:28:57.683456249 +0200
+@@ -51,8 +51,8 @@
+ 
+ #include <assuan.h>
+ 
+-#include "memory.h"
+-#include "secmem-util.h"
++#include "../secmem/memory.h"
++#include "../secmem/secmem-util.h"
+ #include "argparse.h"
+ #include "pinentry.h"
+ #include "password-cache.h"
+@@ -258,8 +258,10 @@
+     {
+       if (! lc_ctype_unknown_warning)
+ 	{
++#ifndef __ANDROID__
+ 	  fprintf (stderr, "%s: no LC_CTYPE known - assuming UTF-8\n",
+ 		   this_pgmname);
++#endif
+ 	  lc_ctype_unknown_warning = 1;
+ 	}
+       return strdup (text);

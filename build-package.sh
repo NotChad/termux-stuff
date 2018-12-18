@@ -116,17 +116,7 @@ termux_setup_rust() {
 
 # Utility function to setup a current ninja build system.
 termux_setup_ninja() {
-	local NINJA_VERSION=1.8.2
-	local NINJA_FOLDER=$TERMUX_COMMON_CACHEDIR/ninja-$NINJA_VERSION
-	if [ ! -x "$NINJA_FOLDER/ninja" ]; then
-		mkdir -p "$NINJA_FOLDER"
-		local NINJA_ZIP_FILE=$TERMUX_PKG_TMPDIR/ninja-$NINJA_VERSION.zip
-		termux_download https://github.com/ninja-build/ninja/releases/download/v$NINJA_VERSION/ninja-linux.zip \
-			"$NINJA_ZIP_FILE" \
-			d2fea9ff33b3ef353161ed906f260d565ca55b8ca0568fa07b1d2cab90a84a07
-		unzip "$NINJA_ZIP_FILE" -d "$NINJA_FOLDER"
-	fi
-	export PATH=$NINJA_FOLDER:$PATH
+    :
 }
 
 # Utility function to setup a current meson build system.
@@ -186,22 +176,6 @@ termux_setup_meson() {
 
 # Utility function to setup a current cmake build system
 termux_setup_cmake() {
-	local TERMUX_CMAKE_MAJORVESION=3.13
-	local TERMUX_CMAKE_MINORVERSION=1
-	local TERMUX_CMAKE_VERSION=$TERMUX_CMAKE_MAJORVESION.$TERMUX_CMAKE_MINORVERSION
-	local TERMUX_CMAKE_TARNAME=cmake-${TERMUX_CMAKE_VERSION}-Linux-x86_64.tar.gz
-	local TERMUX_CMAKE_TARFILE=$TERMUX_PKG_TMPDIR/$TERMUX_CMAKE_TARNAME
-	local TERMUX_CMAKE_FOLDER=$TERMUX_COMMON_CACHEDIR/cmake-$TERMUX_CMAKE_VERSION
-	if [ ! -d "$TERMUX_CMAKE_FOLDER" ]; then
-		termux_download https://cmake.org/files/v$TERMUX_CMAKE_MAJORVESION/$TERMUX_CMAKE_TARNAME \
-		                "$TERMUX_CMAKE_TARFILE" \
-				89c5af93a7e699ed025e96c8a5f857d9498a54f49c87cb9c76f4ce9cb3be92a4
-		rm -Rf "$TERMUX_PKG_TMPDIR/cmake-${TERMUX_CMAKE_VERSION}-Linux-x86_64"
-		tar xf "$TERMUX_CMAKE_TARFILE" -C "$TERMUX_PKG_TMPDIR"
-		mv "$TERMUX_PKG_TMPDIR/cmake-${TERMUX_CMAKE_VERSION}-Linux-x86_64" \
-		   "$TERMUX_CMAKE_FOLDER"
-	fi
-	export PATH=$TERMUX_CMAKE_FOLDER/bin:$PATH
 	export CMAKE_INSTALL_ALWAYS=1
 }
 
@@ -538,6 +512,8 @@ termux_step_setup_toolchain() {
 	export PATH=$PATH:$TERMUX_STANDALONE_TOOLCHAIN/bin
 
 	export CFLAGS=""
+	export CXXFLAGS=""
+	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
 	export LDFLAGS="-L${TERMUX_PREFIX}/lib"
 
 	export AS=${TERMUX_HOST_PLATFORM}-as
@@ -555,8 +531,6 @@ termux_step_setup_toolchain() {
 
 	# Setup pkg-config for cross-compiling:
 	export PKG_CONFIG=$TERMUX_STANDALONE_TOOLCHAIN/bin/${TERMUX_HOST_PLATFORM}-pkg-config
-
-	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
 	export PKG_CONFIG_LIBDIR="$TERMUX_PKG_CONFIG_LIBDIR"
 
 	# Create a pkg-config wrapper. We use path to host pkg-config to
@@ -713,7 +687,6 @@ termux_step_configure_autotools () {
 termux_step_configure_cmake () {
 	termux_setup_cmake
 
-	local TOOLCHAIN_ARGS="-DCMAKE_ANDROID_STANDALONE_TOOLCHAIN=$TERMUX_STANDALONE_TOOLCHAIN"
 	local BUILD_TYPE=MinSizeRel
 	test -n "$TERMUX_DEBUG" && BUILD_TYPE=Debug
 
@@ -742,15 +715,13 @@ termux_step_configure_cmake () {
 		-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
 		-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
 		-DCMAKE_INSTALL_PREFIX=$TERMUX_PREFIX \
+		-DCMAKE_INSTALL_LIBDIR=$TERMUX_PREFIX/lib \
 		-DCMAKE_MAKE_PROGRAM=$MAKE_PROGRAM_PATH \
 		-DCMAKE_SYSTEM_PROCESSOR=$CMAKE_PROC \
-		-DCMAKE_SYSTEM_NAME=Android \
-		-DCMAKE_SYSTEM_VERSION=$TERMUX_PKG_API_LEVEL \
-		-DCMAKE_SKIP_INSTALL_RPATH=ON \
 		-DCMAKE_USE_SYSTEM_LIBRARIES=True \
 		-DDOXYGEN_EXECUTABLE= \
 		-DBUILD_TESTING=OFF \
-		$TERMUX_PKG_EXTRA_CONFIGURE_ARGS $TOOLCHAIN_ARGS
+		$TERMUX_PKG_EXTRA_CONFIGURE_ARGS
 }
 
 termux_step_configure_meson () {
@@ -830,7 +801,6 @@ termux_step_extract_into_massagedir() {
 	# Build diff tar with what has changed during the build:
 	cd $TERMUX_PREFIX
 	tar -N "$TERMUX_BUILD_TS_FILE" \
-		--exclude='lib/libc++_shared.so' --exclude='lib/libstdc++.so' \
 		-czf "$TARBALL_ORIG" .
 
 	# Extract tar in order to massage it
@@ -885,8 +855,6 @@ termux_step_massage() {
 			xargs -r "$STRIP" --strip-unneeded --preserve-dates
 		set -e -o pipefail
 	fi
-	# Remove DT_ entries which the android 5.1 linker warns about:
-	#find . -type f -print0 | xargs -r -0 "$TERMUX_ELF_CLEANER"
 
 	# Fix shebang paths:
 	while IFS= read -r -d '' file

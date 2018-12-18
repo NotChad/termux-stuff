@@ -3,7 +3,6 @@ TERMUX_PKG_DESCRIPTION="Library that allow users to edit command lines as they a
 TERMUX_PKG_DEPENDS="musl, ncurses"
 _MAIN_VERSION=7.0
 _PATCH_VERSION=5
-TERMUX_PKG_REVISION=1
 TERMUX_PKG_SHA256=750d437185286f40a369e1e4f4764eda932b9459b5ec9a731628393dd3d32334
 TERMUX_PKG_VERSION=${_MAIN_VERSION}.${_PATCH_VERSION}
 TERMUX_PKG_SRCURL=https://mirrors.kernel.org/gnu/readline/readline-${_MAIN_VERSION}.tar.gz

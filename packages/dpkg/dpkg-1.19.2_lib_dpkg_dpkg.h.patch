@@ -1,0 +1,12 @@
+diff -uNr dpkg-1.19.2/lib/dpkg/dpkg.h dpkg-1.19.2.mod/lib/dpkg/dpkg.h
+--- dpkg-1.19.2/lib/dpkg/dpkg.h	2018-10-08 01:07:51.000000000 +0300
++++ dpkg-1.19.2.mod/lib/dpkg/dpkg.h	2018-12-17 18:31:28.136347438 +0200
+@@ -95,7 +95,7 @@
+ #define MAXUPDATES         250
+ 
+ #define DEFAULTSHELL        "sh"
+-#define DEFAULTPAGER        "pager"
++#define DEFAULTPAGER        "less"
+ 
+ #define MD5HASHLEN           32
+ #define MAXTRIGDIRECTIVE     256
