@@ -29,7 +29,7 @@ termux_step_configure() {
     LDFLAGS+=" -Wl,-soname,libc.musl-${TERMUX_ARCH}.so.1"
     ./configure \
         --build="x86_64-cross-linux-musl" \
-        --host="aarch64-unknown-linux-musl" \
+        --host="${TERMUX_HOST_PLATFORM}" \
         --prefix="${TERMUX_PREFIX}" \
         --sysconfdir="${TERMUX_PREFIX}/etc" \
         --syslibdir="${TERMUX_PREFIX}/lib" \
@@ -40,6 +40,7 @@ termux_step_configure() {
 
 termux_step_post_make_install() {
     local LDSO=$(make -f Makefile --eval "$(echo -e 'print-ldso:\n\t@echo $$(basename $(LDSO_PATHNAME))')" print-ldso)
+    rm -f "${TERMUX_PREFIX}/lib/${LDSO}"
     mv -f "${TERMUX_PREFIX}/lib/libc.so" "${TERMUX_PREFIX}/lib/${LDSO}"
     ln -sfr "${TERMUX_PREFIX}/lib/${LDSO}" "${TERMUX_PREFIX}/lib/libc.musl-${TERMUX_ARCH}.so.1"
     ln -sfr "${TERMUX_PREFIX}/lib/${LDSO}" "${TERMUX_PREFIX}/lib/libc.so"

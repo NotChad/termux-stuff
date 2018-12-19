@@ -6,6 +6,6 @@ TERMUX_PKG_DEPENDS="libgcc, musl"
 TERMUX_PKG_RM_AFTER_INSTALL="lib/libstdc++.so.6.0.22-gdb.py"
 
 termux_step_make_install() {
-    cp -f "/opt/termux/${TERMUX_HOST_PLATFORM}/${TERMUX_HOST_PLATFORM}/lib/"libstdc++.so.* \
+    cp -f "/opt/termux/toolchain-${TERMUX_ARCH}/${TERMUX_HOST_PLATFORM}/lib/"libstdc++.so.* \
         "${TERMUX_PREFIX}/lib/"
 }

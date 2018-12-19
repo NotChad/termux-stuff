@@ -261,7 +261,13 @@ termux_step_setup_variables() {
 	fi
 
 	if [ "$TERMUX_ARCH" = "aarch64" ]; then
-		TERMUX_HOST_PLATFORM="aarch64-unknown-linux-musl"
+		TERMUX_HOST_PLATFORM="aarch64-termux-linux-musl"
+	elif [ "$TERMUX_ARCH" = "arm" ]; then
+		TERMUX_HOST_PLATFORM="armv7-termux-linux-musleabihf"
+	elif [ "$TERMUX_ARCH" = "i686" ]; then
+		TERMUX_HOST_PLATFORM="i686-termux-linux-musl"
+	elif [ "$TERMUX_ARCH" = "x86_64" ]; then
+		TERMUX_HOST_PLATFORM="x86_64-termux-linux-musl"
 	else
 		echo "Unknown architecture '$TERMUX_ARCH'."
 		exit 1
@@ -351,7 +357,7 @@ termux_step_start_build() {
 	# shellcheck source=/dev/null
 	source "$TERMUX_PKG_BUILDER_SCRIPT"
 
-	TERMUX_STANDALONE_TOOLCHAIN="/opt/termux/${TERMUX_HOST_PLATFORM}"
+	TERMUX_STANDALONE_TOOLCHAIN="/opt/termux/toolchain-${TERMUX_ARCH}"
 
 	if [ -n "${TERMUX_PKG_BLACKLISTED_ARCHES:=""}" ] && [ "$TERMUX_PKG_BLACKLISTED_ARCHES" != "${TERMUX_PKG_BLACKLISTED_ARCHES/$TERMUX_ARCH/}" ]; then
 		echo "Skipping building $TERMUX_PKG_NAME for arch $TERMUX_ARCH"
