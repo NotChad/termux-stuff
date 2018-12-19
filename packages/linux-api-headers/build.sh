@@ -9,6 +9,10 @@ TERMUX_PKG_NO_DEVELSPLIT=true
 termux_step_make() {
     if [ "${TERMUX_ARCH}" = "aarch64" ]; then
         _TERMUX_ARCH="arm64"
+    elif [ "${TERMUX_ARCH}" = "i686" ]; then
+        _TERMUX_ARCH="x86"
+    else
+        _TERMUX_ARCH="${TERMUX_ARCH}"
     fi
 
     make mrproper

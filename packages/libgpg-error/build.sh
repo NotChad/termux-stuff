@@ -8,6 +8,11 @@ TERMUX_PKG_RM_AFTER_INSTALL="share/common-lisp"
 TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_pre_configure() {
-    ln -sf lock-obj-pub.x86_64-pc-linux-musl.h \
-        src/syscfg/lock-obj-pub.linux-musl.h
+    if [ "${TERMUX_ARCH}" = "arm" ]; then
+        ln -sf lock-obj-pub.x86_64-pc-linux-musl.h \
+            src/syscfg/lock-obj-pub.linux-musleabihf.h
+    else
+        ln -sf lock-obj-pub.x86_64-pc-linux-musl.h \
+            src/syscfg/lock-obj-pub.linux-musl.h
+    fi
 }
