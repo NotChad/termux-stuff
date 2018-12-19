@@ -35,8 +35,9 @@ RUN mkdir /data && chown builder:builder /data && \
 # Compile toolchain.
 COPY . /home/builder/termux-musl
 RUN chown builder:builder -Rh /home/builder/termux-musl && \
-    su - builder -c /home/builder/termux-musl/cross-toolchain/build-toolchain.sh && \
-    rm -rf /home/builder/termux-musl /home/builder/.builddir /home/builder/builder-output /home/builder/source-cache
+    su - builder -c "env TERMUX_ARCH=aarch64 /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
+    su - builder -c "env TERMUX_ARCH=arm /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
+    rm -rf /home/builder/termux-musl /home/builder/.toolchain_build
 
 # Prevent using for ldconfig by libtool.
 COPY ./scripts/fake-ldconfig.sh /usr/local/bin/ldconfig
