@@ -2,6 +2,7 @@ TERMUX_PKG_HOMEPAGE=http://www.musl-libc.org/
 TERMUX_PKG_DESCRIPTION="The musl c library (libc) implementation"
 TERMUX_PKG_ESSENTIAL=true
 TERMUX_PKG_VERSION=1.1.19
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=http://www.musl-libc.org/releases/musl-${TERMUX_PKG_VERSION}.tar.gz
 TERMUX_PKG_SHA256=db59a8578226b98373f5b27e61f0dd29ad2456f4aa9cec587ba8c24508e4c1d9
 TERMUX_PKG_BUILD_DEPENDS="linux-api-headers"

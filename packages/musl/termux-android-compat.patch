@@ -1,6 +1,11 @@
+Patch for compatibility with Termux/Android.
+
+ * Paths are prefixed, i.e. rootfs located in $PREFIX.
+ * accept() uses accept4() as __NR_accept is blocked by seccomp.
+
 diff -uNr musl-1.1.19/include/mntent.h musl-1.1.19.mod/include/mntent.h
 --- musl-1.1.19/include/mntent.h	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/include/mntent.h	2018-12-17 20:04:41.444547211 +0200
++++ musl-1.1.19.mod/include/mntent.h	2018-12-20 16:17:42.365715097 +0200
 @@ -8,7 +8,7 @@
  #define __NEED_FILE
  #include <bits/alltypes.h>
@@ -12,7 +17,7 @@ diff -uNr musl-1.1.19/include/mntent.h musl-1.1.19.mod/include/mntent.h
  #define MNTTYPE_NFS	"nfs"
 diff -uNr musl-1.1.19/include/paths.h musl-1.1.19.mod/include/paths.h
 --- musl-1.1.19/include/paths.h	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/include/paths.h	2018-12-17 20:06:53.879312961 +0200
++++ musl-1.1.19.mod/include/paths.h	2018-12-20 16:17:42.365715097 +0200
 @@ -1,31 +1,31 @@
  #ifndef _PATHS_H
  #define _PATHS_H
@@ -64,7 +69,7 @@ diff -uNr musl-1.1.19/include/paths.h musl-1.1.19.mod/include/paths.h
  #endif
 diff -uNr musl-1.1.19/include/resolv.h musl-1.1.19.mod/include/resolv.h
 --- musl-1.1.19/include/resolv.h	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/include/resolv.h	2018-12-17 20:02:42.289944555 +0200
++++ musl-1.1.19.mod/include/resolv.h	2018-12-20 16:17:42.365715097 +0200
 @@ -64,7 +64,7 @@
  #define	__RES	19960801
  
@@ -76,7 +81,7 @@ diff -uNr musl-1.1.19/include/resolv.h musl-1.1.19.mod/include/resolv.h
  struct res_sym {
 diff -uNr musl-1.1.19/include/shadow.h musl-1.1.19.mod/include/shadow.h
 --- musl-1.1.19/include/shadow.h	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/include/shadow.h	2018-12-17 20:06:58.616031214 +0200
++++ musl-1.1.19.mod/include/shadow.h	2018-12-20 16:17:42.369048530 +0200
 @@ -10,7 +10,7 @@
  
  #include <bits/alltypes.h>
@@ -88,7 +93,7 @@ diff -uNr musl-1.1.19/include/shadow.h musl-1.1.19.mod/include/shadow.h
  	char *sp_namp;
 diff -uNr musl-1.1.19/include/stdio.h musl-1.1.19.mod/include/stdio.h
 --- musl-1.1.19/include/stdio.h	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/include/stdio.h	2018-12-17 20:13:38.419496627 +0200
++++ musl-1.1.19.mod/include/stdio.h	2018-12-20 16:17:42.369048530 +0200
 @@ -154,7 +154,7 @@
  
  #if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
@@ -100,7 +105,7 @@ diff -uNr musl-1.1.19/include/stdio.h musl-1.1.19.mod/include/stdio.h
  
 diff -uNr musl-1.1.19/ldso/dynlink.c musl-1.1.19.mod/ldso/dynlink.c
 --- musl-1.1.19/ldso/dynlink.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/ldso/dynlink.c	2018-12-17 20:12:09.271403974 +0200
++++ musl-1.1.19.mod/ldso/dynlink.c	2018-12-20 16:17:42.369048530 +0200
 @@ -1020,7 +1020,7 @@
  					sys_path = "";
  				}
@@ -112,7 +117,7 @@ diff -uNr musl-1.1.19/ldso/dynlink.c musl-1.1.19.mod/ldso/dynlink.c
  		pathname = buf;
 diff -uNr musl-1.1.19/src/conf/confstr.c musl-1.1.19.mod/src/conf/confstr.c
 --- musl-1.1.19/src/conf/confstr.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/conf/confstr.c	2018-12-17 20:16:57.823194088 +0200
++++ musl-1.1.19.mod/src/conf/confstr.c	2018-12-20 16:17:42.369048530 +0200
 @@ -6,7 +6,7 @@
  {
  	const char *s = "";
@@ -124,7 +129,7 @@ diff -uNr musl-1.1.19/src/conf/confstr.c musl-1.1.19.mod/src/conf/confstr.c
  		return 0;
 diff -uNr musl-1.1.19/src/legacy/getusershell.c musl-1.1.19.mod/src/legacy/getusershell.c
 --- musl-1.1.19/src/legacy/getusershell.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/legacy/getusershell.c	2018-12-17 20:09:18.837567646 +0200
++++ musl-1.1.19.mod/src/legacy/getusershell.c	2018-12-20 16:17:42.372381962 +0200
 @@ -2,7 +2,7 @@
  #include <stdio.h>
  #include <unistd.h>
@@ -145,7 +150,7 @@ diff -uNr musl-1.1.19/src/legacy/getusershell.c musl-1.1.19.mod/src/legacy/getus
  
 diff -uNr musl-1.1.19/src/misc/wordexp.c musl-1.1.19.mod/src/misc/wordexp.c
 --- musl-1.1.19/src/misc/wordexp.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/misc/wordexp.c	2018-12-17 20:17:03.773128167 +0200
++++ musl-1.1.19.mod/src/misc/wordexp.c	2018-12-20 16:17:42.372381962 +0200
 @@ -108,7 +108,7 @@
  	if (!pid) {
  		if (p[1] == 1) fcntl(1, F_SETFD, 0);
@@ -155,9 +160,36 @@ diff -uNr musl-1.1.19/src/misc/wordexp.c musl-1.1.19.mod/src/misc/wordexp.c
  			"eval \"printf %s\\\\\\\\0 x $1 $2\"",
  			"sh", s, redir, (char *)0);
  		_exit(1);
+diff -uNr musl-1.1.19/src/network/accept4.c musl-1.1.19.mod/src/network/accept4.c
+--- musl-1.1.19/src/network/accept4.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/network/accept4.c	2018-12-20 16:17:07.057977841 +0200
+@@ -7,11 +7,9 @@
+ 
+ int accept4(int fd, struct sockaddr *restrict addr, socklen_t *restrict len, int flg)
+ {
+-	if (!flg) return accept(fd, addr, len);
+ 	int ret = socketcall_cp(accept4, fd, addr, len, flg, 0, 0);
+-	if (ret>=0 || (errno != ENOSYS && errno != EINVAL)) return ret;
+-	ret = accept(fd, addr, len);
+-	if (ret<0) return ret;
++	if (ret<0)
++		return ret;
+ 	if (flg & SOCK_CLOEXEC)
+ 		__syscall(SYS_fcntl, ret, F_SETFD, FD_CLOEXEC);
+ 	if (flg & SOCK_NONBLOCK)
+diff -uNr musl-1.1.19/src/network/accept.c musl-1.1.19.mod/src/network/accept.c
+--- musl-1.1.19/src/network/accept.c	2018-02-22 20:39:19.000000000 +0200
++++ musl-1.1.19.mod/src/network/accept.c	2018-12-20 16:12:25.474467925 +0200
+@@ -4,5 +4,5 @@
+ 
+ int accept(int fd, struct sockaddr *restrict addr, socklen_t *restrict len)
+ {
+-	return socketcall_cp(accept, fd, addr, len, 0, 0, 0);
++	return accept4(fd, addr, len, 0);
+ }
 diff -uNr musl-1.1.19/src/network/getnameinfo.c musl-1.1.19.mod/src/network/getnameinfo.c
 --- musl-1.1.19/src/network/getnameinfo.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/network/getnameinfo.c	2018-12-17 20:09:31.511040618 +0200
++++ musl-1.1.19.mod/src/network/getnameinfo.c	2018-12-20 16:17:42.372381962 +0200
 @@ -50,7 +50,7 @@
  	char line[512], *p, *z;
  	unsigned char _buf[1032], atmp[16];
@@ -178,7 +210,7 @@ diff -uNr musl-1.1.19/src/network/getnameinfo.c musl-1.1.19.mod/src/network/getn
  		if ((p=strchr(line, '#'))) *p++='\n', *p=0;
 diff -uNr musl-1.1.19/src/network/lookup_name.c musl-1.1.19.mod/src/network/lookup_name.c
 --- musl-1.1.19/src/network/lookup_name.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/network/lookup_name.c	2018-12-17 20:09:36.901100036 +0200
++++ musl-1.1.19.mod/src/network/lookup_name.c	2018-12-20 16:17:42.372381962 +0200
 @@ -51,7 +51,7 @@
  	size_t l = strlen(name);
  	int cnt = 0, badfam = 0;
@@ -190,7 +222,7 @@ diff -uNr musl-1.1.19/src/network/lookup_name.c musl-1.1.19.mod/src/network/look
  	case ENOTDIR:
 diff -uNr musl-1.1.19/src/network/lookup_serv.c musl-1.1.19.mod/src/network/lookup_serv.c
 --- musl-1.1.19/src/network/lookup_serv.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/network/lookup_serv.c	2018-12-17 20:09:41.271148233 +0200
++++ musl-1.1.19.mod/src/network/lookup_serv.c	2018-12-20 16:17:42.372381962 +0200
 @@ -69,7 +69,7 @@
  	size_t l = strlen(name);
  
@@ -202,7 +234,7 @@ diff -uNr musl-1.1.19/src/network/lookup_serv.c musl-1.1.19.mod/src/network/look
  	case ENOTDIR:
 diff -uNr musl-1.1.19/src/network/resolvconf.c musl-1.1.19.mod/src/network/resolvconf.c
 --- musl-1.1.19/src/network/resolvconf.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/network/resolvconf.c	2018-12-17 20:03:00.466803475 +0200
++++ musl-1.1.19.mod/src/network/resolvconf.c	2018-12-20 16:17:42.372381962 +0200
 @@ -17,7 +17,7 @@
  	conf->attempts = 2;
  	if (search) *search = 0;
@@ -214,7 +246,7 @@ diff -uNr musl-1.1.19/src/network/resolvconf.c musl-1.1.19.mod/src/network/resol
  	case ENOTDIR:
 diff -uNr musl-1.1.19/src/passwd/getgr_a.c musl-1.1.19.mod/src/passwd/getgr_a.c
 --- musl-1.1.19/src/passwd/getgr_a.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/getgr_a.c	2018-12-17 20:09:48.551228545 +0200
++++ musl-1.1.19.mod/src/passwd/getgr_a.c	2018-12-20 16:17:42.372381962 +0200
 @@ -26,7 +26,7 @@
  	*res = 0;
  
@@ -226,7 +258,7 @@ diff -uNr musl-1.1.19/src/passwd/getgr_a.c musl-1.1.19.mod/src/passwd/getgr_a.c
  		goto done;
 diff -uNr musl-1.1.19/src/passwd/getgrent.c musl-1.1.19.mod/src/passwd/getgrent.c
 --- musl-1.1.19/src/passwd/getgrent.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/getgrent.c	2018-12-17 20:09:53.524616769 +0200
++++ musl-1.1.19.mod/src/passwd/getgrent.c	2018-12-20 16:17:42.372381962 +0200
 @@ -16,7 +16,7 @@
  {
  	struct group *res;
@@ -238,7 +270,7 @@ diff -uNr musl-1.1.19/src/passwd/getgrent.c musl-1.1.19.mod/src/passwd/getgrent.
  	return res;
 diff -uNr musl-1.1.19/src/passwd/getgrouplist.c musl-1.1.19.mod/src/passwd/getgrouplist.c
 --- musl-1.1.19/src/passwd/getgrouplist.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/getgrouplist.c	2018-12-17 20:10:01.928042896 +0200
++++ musl-1.1.19.mod/src/passwd/getgrouplist.c	2018-12-20 16:17:42.372381962 +0200
 @@ -42,7 +42,7 @@
  	}
  	fclose(f);
@@ -250,7 +282,7 @@ diff -uNr musl-1.1.19/src/passwd/getgrouplist.c musl-1.1.19.mod/src/passwd/getgr
  
 diff -uNr musl-1.1.19/src/passwd/getpw_a.c musl-1.1.19.mod/src/passwd/getpw_a.c
 --- musl-1.1.19/src/passwd/getpw_a.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/getpw_a.c	2018-12-17 20:10:05.638083882 +0200
++++ musl-1.1.19.mod/src/passwd/getpw_a.c	2018-12-20 16:17:42.372381962 +0200
 @@ -27,7 +27,7 @@
  
  	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
@@ -262,7 +294,7 @@ diff -uNr musl-1.1.19/src/passwd/getpw_a.c musl-1.1.19.mod/src/passwd/getpw_a.c
  		goto done;
 diff -uNr musl-1.1.19/src/passwd/getpwent.c musl-1.1.19.mod/src/passwd/getpwent.c
 --- musl-1.1.19/src/passwd/getpwent.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/getpwent.c	2018-12-17 20:10:10.404803216 +0200
++++ musl-1.1.19.mod/src/passwd/getpwent.c	2018-12-20 16:17:42.372381962 +0200
 @@ -16,7 +16,7 @@
  struct passwd *getpwent()
  {
@@ -274,7 +306,7 @@ diff -uNr musl-1.1.19/src/passwd/getpwent.c musl-1.1.19.mod/src/passwd/getpwent.
  	return res;
 diff -uNr musl-1.1.19/src/passwd/getspnam_r.c musl-1.1.19.mod/src/passwd/getspnam_r.c
 --- musl-1.1.19/src/passwd/getspnam_r.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/getspnam_r.c	2018-12-17 20:10:19.334901937 +0200
++++ musl-1.1.19.mod/src/passwd/getspnam_r.c	2018-12-20 16:17:42.372381962 +0200
 @@ -79,7 +79,7 @@
  		return errno = ERANGE;
  
@@ -295,7 +327,7 @@ diff -uNr musl-1.1.19/src/passwd/getspnam_r.c musl-1.1.19.mod/src/passwd/getspna
  
 diff -uNr musl-1.1.19/src/passwd/nscd_query.c musl-1.1.19.mod/src/passwd/nscd_query.c
 --- musl-1.1.19/src/passwd/nscd_query.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/passwd/nscd_query.c	2018-12-17 20:12:48.163853661 +0200
++++ musl-1.1.19.mod/src/passwd/nscd_query.c	2018-12-20 16:17:42.375715395 +0200
 @@ -12,7 +12,7 @@
  	char sun_path[21];
  } addr = {
@@ -307,7 +339,7 @@ diff -uNr musl-1.1.19/src/passwd/nscd_query.c musl-1.1.19.mod/src/passwd/nscd_qu
  FILE *__nscd_query(int32_t req, const char *key, int32_t *buf, size_t len, int *swap)
 diff -uNr musl-1.1.19/src/process/execvp.c musl-1.1.19.mod/src/process/execvp.c
 --- musl-1.1.19/src/process/execvp.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/process/execvp.c	2018-12-17 20:11:24.678959243 +0200
++++ musl-1.1.19.mod/src/process/execvp.c	2018-12-20 16:17:42.375715395 +0200
 @@ -19,7 +19,7 @@
  	if (strchr(file, '/'))
  		return execve(file, argv, envp);
@@ -319,7 +351,7 @@ diff -uNr musl-1.1.19/src/process/execvp.c musl-1.1.19.mod/src/process/execvp.c
  		errno = ENAMETOOLONG;
 diff -uNr musl-1.1.19/src/process/system.c musl-1.1.19.mod/src/process/system.c
 --- musl-1.1.19/src/process/system.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/process/system.c	2018-12-17 20:17:10.669719857 +0200
++++ musl-1.1.19.mod/src/process/system.c	2018-12-20 16:17:42.375715395 +0200
 @@ -33,7 +33,7 @@
  	posix_spawnattr_setsigmask(&attr, &old);
  	posix_spawnattr_setsigdefault(&attr, &reset);
@@ -331,7 +363,7 @@ diff -uNr musl-1.1.19/src/process/system.c musl-1.1.19.mod/src/process/system.c
  
 diff -uNr musl-1.1.19/src/stdio/popen.c musl-1.1.19.mod/src/stdio/popen.c
 --- musl-1.1.19/src/stdio/popen.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/stdio/popen.c	2018-12-17 20:17:16.029662624 +0200
++++ musl-1.1.19.mod/src/stdio/popen.c	2018-12-20 16:17:42.375715395 +0200
 @@ -51,7 +51,7 @@
  	e = ENOMEM;
  	if (!posix_spawn_file_actions_init(&fa)) {
@@ -343,7 +375,7 @@ diff -uNr musl-1.1.19/src/stdio/popen.c musl-1.1.19.mod/src/stdio/popen.c
  				f->pipe_pid = pid;
 diff -uNr musl-1.1.19/src/stdio/tmpfile.c musl-1.1.19.mod/src/stdio/tmpfile.c
 --- musl-1.1.19/src/stdio/tmpfile.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/stdio/tmpfile.c	2018-12-17 20:13:50.099276561 +0200
++++ musl-1.1.19.mod/src/stdio/tmpfile.c	2018-12-20 16:17:42.375715395 +0200
 @@ -8,7 +8,7 @@
  
  FILE *tmpfile(void)
@@ -355,7 +387,7 @@ diff -uNr musl-1.1.19/src/stdio/tmpfile.c musl-1.1.19.mod/src/stdio/tmpfile.c
  	int try;
 diff -uNr musl-1.1.19/src/stdio/tmpnam.c musl-1.1.19.mod/src/stdio/tmpnam.c
 --- musl-1.1.19/src/stdio/tmpnam.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/stdio/tmpnam.c	2018-12-17 20:13:46.692673417 +0200
++++ musl-1.1.19.mod/src/stdio/tmpnam.c	2018-12-20 16:17:42.375715395 +0200
 @@ -12,7 +12,7 @@
  char *tmpnam(char *buf)
  {
@@ -367,7 +399,7 @@ diff -uNr musl-1.1.19/src/stdio/tmpnam.c musl-1.1.19.mod/src/stdio/tmpnam.c
  	for (try=0; try<MAXTRIES; try++) {
 diff -uNr musl-1.1.19/src/thread/sem_open.c musl-1.1.19.mod/src/thread/sem_open.c
 --- musl-1.1.19/src/thread/sem_open.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/thread/sem_open.c	2018-12-17 20:15:37.824198006 +0200
++++ musl-1.1.19.mod/src/thread/sem_open.c	2018-12-20 16:17:42.375715395 +0200
 @@ -32,7 +32,7 @@
  	int fd, i, e, slot, first=1, cnt, cs;
  	sem_t newsem;
@@ -388,7 +420,7 @@ diff -uNr musl-1.1.19/src/thread/sem_open.c musl-1.1.19.mod/src/thread/sem_open.
  			if (errno == EEXIST) continue;
 diff -uNr musl-1.1.19/src/time/__tz.c musl-1.1.19.mod/src/time/__tz.c
 --- musl-1.1.19/src/time/__tz.c	2018-02-22 20:39:19.000000000 +0200
-+++ musl-1.1.19.mod/src/time/__tz.c	2018-12-17 20:10:53.095275639 +0200
++++ musl-1.1.19.mod/src/time/__tz.c	2018-12-20 16:17:42.379048827 +0200
 @@ -122,10 +122,10 @@
  	const unsigned char *map = 0;
  	size_t i;
