@@ -58,43 +58,6 @@ termux_download() {
 	termux_error_exit "Failed to download $URL"
 }
 
-# Utility function for golang-using packages to setup a go toolchain.
-termux_setup_golang() {
-	export GOOS=android
-	export CGO_ENABLED=1
-	export GO_LDFLAGS="-extldflags=-pie"
-	if [ "$TERMUX_ARCH" = "arm" ]; then
-		export GOARCH=arm
-		export GOARM=7
-	elif [ "$TERMUX_ARCH" = "i686" ]; then
-		export GOARCH=386
-		export GO386=sse2
-	elif [ "$TERMUX_ARCH" = "aarch64" ]; then
-		export GOARCH=arm64
-	elif [ "$TERMUX_ARCH" = "x86_64" ]; then
-		export GOARCH=amd64
-	else
-		termux_error_exit "Unsupported arch: $TERMUX_ARCH"
-	fi
-
-	local TERMUX_GO_VERSION=go1.11.2
-	local TERMUX_GO_PLATFORM=linux-amd64
-
-	local TERMUX_BUILDGO_FOLDER=$TERMUX_COMMON_CACHEDIR/${TERMUX_GO_VERSION}
-	export GOROOT=$TERMUX_BUILDGO_FOLDER
-	export PATH=$GOROOT/bin:$PATH
-
-	if [ -d "$TERMUX_BUILDGO_FOLDER" ]; then return; fi
-
-	local TERMUX_BUILDGO_TAR=$TERMUX_COMMON_CACHEDIR/${TERMUX_GO_VERSION}.${TERMUX_GO_PLATFORM}.tar.gz
-	rm -Rf "$TERMUX_COMMON_CACHEDIR/go" "$TERMUX_BUILDGO_FOLDER"
-	termux_download https://storage.googleapis.com/golang/${TERMUX_GO_VERSION}.${TERMUX_GO_PLATFORM}.tar.gz \
-		"$TERMUX_BUILDGO_TAR" \
-		1dfe664fa3d8ad714bbd15a36627992effd150ddabd7523931f077b3926d736d
-
-	( cd "$TERMUX_COMMON_CACHEDIR"; tar xf "$TERMUX_BUILDGO_TAR"; mv go "$TERMUX_BUILDGO_FOLDER"; rm "$TERMUX_BUILDGO_TAR" )
-}
-
 # Utility function for rust-using packages to setup a rust toolchain.
 termux_setup_rust() {
 	if [ $TERMUX_ARCH = "arm" ]; then
@@ -114,14 +77,8 @@ termux_setup_rust() {
 	rustup target add $CARGO_TARGET_NAME
 }
 
-# Utility function to setup a current ninja build system.
-termux_setup_ninja() {
-    :
-}
-
 # Utility function to setup a current meson build system.
 termux_setup_meson() {
-	termux_setup_ninja
 	local MESON_VERSION=0.48.0
 	local MESON_FOLDER=$TERMUX_COMMON_CACHEDIR/meson-$MESON_VERSION-v1
 	if [ ! -d "$MESON_FOLDER" ]; then
@@ -172,11 +129,6 @@ termux_setup_meson() {
 			system = 'android'
 		HERE
 	fi
-}
-
-# Utility function to setup a current cmake build system
-termux_setup_cmake() {
-	export CMAKE_INSTALL_ALWAYS=1
 }
 
 # First step is to handle command-line arguments. Not to be overridden by packages.
@@ -514,11 +466,6 @@ termux_step_setup_toolchain() {
 	# We put this after system PATH to avoid picking up toolchain stripped python
 	export PATH=$PATH:$TERMUX_STANDALONE_TOOLCHAIN/bin
 
-	export CFLAGS="--sysroot=${TERMUX_PREFIX}"
-	export CXXFLAGS="${CFLAGS}"
-	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
-	export LDFLAGS="-L${TERMUX_PREFIX}/lib"
-
 	export AS=${TERMUX_HOST_PLATFORM}-as
 	export CC=$TERMUX_HOST_PLATFORM-gcc
 	export CXX=$TERMUX_HOST_PLATFORM-g++
@@ -529,8 +476,38 @@ termux_step_setup_toolchain() {
 	export RANLIB=$TERMUX_HOST_PLATFORM-ranlib
 	export READELF=$TERMUX_HOST_PLATFORM-readelf
 	export STRIP=$TERMUX_HOST_PLATFORM-strip
-
 	export CC_FOR_BUILD=gcc
+
+	export GOOS=linux
+	export CGO_ENABLED=1
+
+	export CFLAGS="--sysroot=${TERMUX_PREFIX}"
+	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
+	export LDFLAGS="-L${TERMUX_PREFIX}/lib"
+
+	if [ -n "$TERMUX_DEBUG" ]; then
+		CFLAGS+=" -g3 -O1"
+	else
+		CFLAGS+=" -Os"
+	fi
+
+	if [ "$TERMUX_ARCH" = "aarch64" ]; then
+		export GOARCH=arm64
+	elif [ "$TERMUX_ARCH" = "arm" ]; then
+		export GOARCH=arm
+		export GOARM=7
+	elif [ "$TERMUX_ARCH" = "i686" ]; then
+		export GOARCH=386
+		export GO386=sse2
+		CFLAGS+=" -march=i686 -msse3 -mstackrealign -mfpmath=sse"
+	elif [ "$TERMUX_ARCH" = "x86_64" ]; then
+		export GOARCH=amd64
+	else
+		termux_error_exit "Unsupported arch: $TERMUX_ARCH"
+	fi
+
+	# Let CXXFLAGS will be same as CFLAGS.
+	export CXXFLAGS="${CFLAGS}"
 
 	# Setup pkg-config for cross-compiling:
 	export PKG_CONFIG=$TERMUX_STANDALONE_TOOLCHAIN/bin/${TERMUX_HOST_PLATFORM}-pkg-config
@@ -548,6 +525,9 @@ termux_step_setup_toolchain() {
 		exec $_HOST_PKGCONFIG "\$@"
 	HERE
 	chmod +x "$PKG_CONFIG"
+
+	# CMake: install all files whether they have changed or not.
+	export CMAKE_INSTALL_ALWAYS=1
 }
 
 # Apply all *.patch files for the package. Not to be overridden by packages.
@@ -688,8 +668,6 @@ termux_step_configure_autotools () {
 }
 
 termux_step_configure_cmake () {
-	termux_setup_cmake
-
 	local BUILD_TYPE=MinSizeRel
 	test -n "$TERMUX_DEBUG" && BUILD_TYPE=Debug
 
@@ -697,7 +675,6 @@ termux_step_configure_cmake () {
 	test $CMAKE_PROC == "arm" && CMAKE_PROC='armv7-a'
 	local MAKE_PROGRAM_PATH
 	if [ $TERMUX_CMAKE_BUILD = Ninja ]; then
-		termux_setup_ninja
 		MAKE_PROGRAM_PATH=`which ninja`
 	else
 		MAKE_PROGRAM_PATH=`which make`

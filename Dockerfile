@@ -16,7 +16,7 @@ RUN apk add alpine-sdk
 
 # Install additional essential packages.
 RUN apk add autoconf automake bash bison coreutils cmake diffutils dpkg findutils \
-    flex gawk gettext gettext-dev gmp-dev grep isl-dev libtool mpc1-dev mpfr-dev \
+    flex gawk gettext gettext-dev gmp-dev go grep isl-dev libtool mpc1-dev mpfr-dev \
     ncurses ncurses-dev ninja python3 sed texinfo xz zip zlib-dev
 
 # Install developer tools.
