@@ -6,11 +6,11 @@ diff -uNr gcc-6.4.0/gcc/config/aarch64/aarch64-linux.h gcc-6.4.0.mod/gcc/config/
  #define GCC_AARCH64_LINUX_H
  
 -#define GLIBC_DYNAMIC_LINKER "/lib/ld-linux-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
-+#define GLIBC_DYNAMIC_LINKER "/data/data/com.termux/files/usr/lib/ld-linux-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
++#define GLIBC_DYNAMIC_LINKER "@TERMUX_PREFIX@/lib/ld-linux-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
  
  #undef MUSL_DYNAMIC_LINKER
 -#define MUSL_DYNAMIC_LINKER "/lib/ld-musl-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
-+#define MUSL_DYNAMIC_LINKER "/data/data/com.termux/files/usr/lib/ld-musl-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
++#define MUSL_DYNAMIC_LINKER "@TERMUX_PREFIX@/lib/ld-musl-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
  
  #undef  ASAN_CC1_SPEC
  #define ASAN_CC1_SPEC "%{%:sanitize(address):-funwind-tables}"
@@ -23,8 +23,8 @@ diff -uNr gcc-6.4.0/gcc/config/arm/linux-eabi.h gcc-6.4.0.mod/gcc/config/arm/lin
  #undef  GLIBC_DYNAMIC_LINKER
 -#define GLIBC_DYNAMIC_LINKER_SOFT_FLOAT "/lib/ld-linux.so.3"
 -#define GLIBC_DYNAMIC_LINKER_HARD_FLOAT "/lib/ld-linux-armhf.so.3"
-+#define GLIBC_DYNAMIC_LINKER_SOFT_FLOAT "/data/data/com.termux/files/usr/lib/ld-linux.so.3"
-+#define GLIBC_DYNAMIC_LINKER_HARD_FLOAT "/data/data/com.termux/files/usr/lib/ld-linux-armhf.so.3"
++#define GLIBC_DYNAMIC_LINKER_SOFT_FLOAT "@TERMUX_PREFIX@/lib/ld-linux.so.3"
++#define GLIBC_DYNAMIC_LINKER_HARD_FLOAT "@TERMUX_PREFIX@/lib/ld-linux-armhf.so.3"
  #define GLIBC_DYNAMIC_LINKER_DEFAULT GLIBC_DYNAMIC_LINKER_SOFT_FLOAT
  
  #define GLIBC_DYNAMIC_LINKER \
@@ -33,7 +33,7 @@ diff -uNr gcc-6.4.0/gcc/config/arm/linux-eabi.h gcc-6.4.0.mod/gcc/config/arm/lin
  #endif
  #define MUSL_DYNAMIC_LINKER \
 -  "/lib/ld-musl-arm" MUSL_DYNAMIC_LINKER_E "%{mfloat-abi=hard:hf}.so.1"
-+  "/data/data/com.termux/files/usr/lib/ld-musl-arm" MUSL_DYNAMIC_LINKER_E "%{mfloat-abi=hard:hf}.so.1"
++  "@TERMUX_PREFIX@/lib/ld-musl-arm" MUSL_DYNAMIC_LINKER_E "%{mfloat-abi=hard:hf}.so.1"
  
  /* At this point, bpabi.h will have clobbered LINK_SPEC.  We want to
     use the GNU/Linux version, not the generic BPABI version.  */

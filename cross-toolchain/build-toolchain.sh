@@ -16,6 +16,7 @@ set -e -u
 
 : "${TERMUX_ARCH:="aarch64"}"
 : "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
+: "${TERMUX_HOME:="/data/data/com.termux/files/home"}"
 
 ## Don't modify these variables without good reason.
 KERNEL_VERSION="3.16.61"
@@ -172,7 +173,9 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" ]; then
     cd "binutils-${BINUTILS_VERSION}"
 
     for p in "${SCRIPT_DIR}"/binutils/*.patch; do
-        patch -p1 -i "${p}"
+        sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+                patch --silent -p1
     done
     unset p
 
@@ -231,7 +234,9 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" ]; then
     cd "gcc-${GCC_VERSION}"
 
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
-        patch -p1 -F3 -i "${p}"
+        sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+                patch --silent -p1 -F3
     done
     unset p
 
@@ -310,7 +315,9 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" ]; then
     cd "musl-${MUSL_LIBC_VERSION}"
 
     for p in "${SCRIPT_DIR}"/musl/*.patch; do
-        patch -p1 -i "${p}"
+        sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+                patch --silent -p1
     done
     unset p
 
@@ -374,7 +381,9 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" ]; then
     cd "gcc-${GCC_VERSION}"
 
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
-        patch -p1 -F3 -i "${p}"
+        sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+                patch --silent -p1 -F3
     done
     unset p
 
