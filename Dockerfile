@@ -37,6 +37,8 @@ COPY . /home/builder/termux-musl
 RUN chown builder:builder -Rh /home/builder/termux-musl && \
     su - builder -c "env TERMUX_ARCH=aarch64 /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
     su - builder -c "env TERMUX_ARCH=arm /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
+    su - builder -c "env TERMUX_ARCH=i686 /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
+    su - builder -c "env TERMUX_ARCH=x86_64 /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
     rm -rf /home/builder/termux-musl /home/builder/.toolchain_build
 
 # Prevent using for ldconfig by libtool.
