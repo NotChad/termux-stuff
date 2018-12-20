@@ -1,8 +1,8 @@
-diff -u -r ../gnupg-2.1.14/configure ./configure
---- ../gnupg-2.1.14/configure	2016-07-14 10:03:06.000000000 -0400
-+++ ./configure	2016-07-14 19:20:04.539115863 -0400
-@@ -14729,13 +14729,6 @@
- done
+diff -uNr gnupg-2.2.11/configure gnupg-2.2.11.mod/configure
+--- gnupg-2.2.11/configure	2018-11-06 12:19:29.000000000 +0200
++++ gnupg-2.2.11.mod/configure	2018-12-20 19:00:21.083524084 +0200
+@@ -14888,13 +14888,6 @@
+ esac
  
  
 -if test "$have_android_system" = yes; then

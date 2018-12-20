@@ -1,0 +1,21 @@
+diff -uNr gnupg-2.2.11/g13/be-encfs.c gnupg-2.2.11.mod/g13/be-encfs.c
+--- gnupg-2.2.11/g13/be-encfs.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/g13/be-encfs.c	2018-12-20 19:05:33.584497084 +0200
+@@ -410,7 +410,7 @@
+   if (err)
+     goto leave;
+ 
+-  mountpoint = xtrystrdup ("/tmp/.#g13_XXXXXX");
++  mountpoint = xtrystrdup ("@TERMUX_PREFIX@/tmp/.#g13_XXXXXX");
+   if (!mountpoint)
+     {
+       err = gpg_error_from_syserror ();
+@@ -420,7 +420,7 @@
+     {
+       err = gpg_error_from_syserror ();
+       log_error (_("can't create directory '%s': %s\n"),
+-                 "/tmp/.#g13_XXXXXX", gpg_strerror (err));
++                 "@TERMUX_PREFIX@/tmp/.#g13_XXXXXX", gpg_strerror (err));
+       goto leave;
+     }
+ 

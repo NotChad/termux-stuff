@@ -1,0 +1,21 @@
+diff -uNr gnupg-2.2.11/common/homedir.c gnupg-2.2.11.mod/common/homedir.c
+--- gnupg-2.2.11/common/homedir.c	2018-04-09 15:40:01.000000000 +0300
++++ gnupg-2.2.11.mod/common/homedir.c	2018-12-20 19:13:38.098099976 +0200
+@@ -574,13 +574,13 @@
+ 
+   static const char * const bases[] = {
+ #ifdef USE_RUN_GNUPG_USER_SOCKET
+-    "/run/gnupg",
++    "@TERMUX_PREFIX@/run/gnupg",
+ #endif
+-    "/run",
++    "@TERMUX_PREFIX@/run",
+ #ifdef USE_RUN_GNUPG_USER_SOCKET
+-    "/var/run/gnupg",
++    "@TERMUX_PREFIX@/var/run/gnupg",
+ #endif
+-    "/var/run",
++    "@TERMUX_PREFIX@/var/run",
+     NULL
+   };
+   int i;

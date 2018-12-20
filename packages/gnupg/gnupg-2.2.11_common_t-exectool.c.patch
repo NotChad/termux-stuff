@@ -1,0 +1,43 @@
+diff -uNr gnupg-2.2.11/common/t-exectool.c gnupg-2.2.11.mod/common/t-exectool.c
+--- gnupg-2.2.11/common/t-exectool.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/common/t-exectool.c	2018-12-20 19:16:14.952888899 +0200
+@@ -39,8 +39,8 @@
+ test_executing_true (void)
+ {
+   gpg_error_t err;
+-  const char *pgmname     = "/bin/true";
+-  const char *alt_pgmname = "/usr/bin/true";
++  const char *pgmname     = "@TERMUX_PREFIX@/bin/true";
++  const char *alt_pgmname = "@TERMUX_PREFIX@/bin/applets/true";
+   const char *argv[]     = { NULL, NULL };
+   char *result;
+   size_t len;
+@@ -72,8 +72,8 @@
+ test_executing_false (void)
+ {
+   gpg_error_t err;
+-  const char *pgmname     = "/bin/false";
+-  const char *alt_pgmname = "/usr/bin/false";
++  const char *pgmname     = "@TERMUX_PREFIX@/bin/false";
++  const char *alt_pgmname = "@TERMUX_PREFIX@/bin/applets/false";
+   const char *argv[]     = { NULL, NULL };
+   char *result;
+   size_t len;
+@@ -101,7 +101,7 @@
+ test_executing_cat (const char *vector)
+ {
+   gpg_error_t err;
+-  const char *argv[] = { "/bin/cat", NULL };
++  const char *argv[] = { "@TERMUX_PREFIX@/bin/cat", NULL };
+   char *result;
+   size_t len;
+ 
+@@ -135,7 +135,7 @@
+ test_catting_cat (void)
+ {
+   gpg_error_t err;
+-  const char *argv[] = { "/bin/cat", "/bin/cat", NULL };
++  const char *argv[] = { "@TERMUX_PREFIX@/bin/cat", "@TERMUX_PREFIX@/bin/cat", NULL };
+   char *result;
+   size_t len;
+   estream_t in;

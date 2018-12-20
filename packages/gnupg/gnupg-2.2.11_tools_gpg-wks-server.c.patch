@@ -1,0 +1,12 @@
+diff -uNr gnupg-2.2.11/tools/gpg-wks-server.c gnupg-2.2.11.mod/tools/gpg-wks-server.c
+--- gnupg-2.2.11/tools/gpg-wks-server.c	2018-10-26 15:59:42.000000000 +0300
++++ gnupg-2.2.11.mod/tools/gpg-wks-server.c	2018-12-20 19:13:09.977849767 +0200
+@@ -307,7 +307,7 @@
+     opt.gpg_program = gnupg_module_name (GNUPG_MODULE_NAME_GPG);
+ 
+   if (!opt.directory)
+-    opt.directory = "/var/lib/gnupg/wks";
++    opt.directory = "@TERMUX_PREFIX@/var/lib/gnupg/wks";
+ 
+   /* Check for syntax errors in the --header option to avoid later
+    * error messages with a not easy to find cause */

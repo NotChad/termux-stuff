@@ -1,0 +1,20 @@
+diff -uNr gnupg-2.2.11/g13/mount.c gnupg-2.2.11.mod/g13/mount.c
+--- gnupg-2.2.11/g13/mount.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/g13/mount.c	2018-12-20 19:05:12.307719281 +0200
+@@ -82,14 +82,14 @@
+ 
+   if (!mountpoint)
+     {
+-      mountpoint_buffer = xtrystrdup ("/tmp/g13-XXXXXX");
++      mountpoint_buffer = xtrystrdup ("@TERMUX_PREFIX@/tmp/g13-XXXXXX");
+       if (!mountpoint_buffer)
+         return gpg_error_from_syserror ();
+       if (!gnupg_mkdtemp (mountpoint_buffer))
+         {
+           err = gpg_error_from_syserror ();
+           log_error (_("can't create directory '%s': %s\n"),
+-                     "/tmp/g13-XXXXXX", gpg_strerror (err));
++                     "@TERMUX_PREFIX@/tmp/g13-XXXXXX", gpg_strerror (err));
+           xfree (mountpoint_buffer);
+           return err;
+         }

@@ -1,0 +1,12 @@
+diff -uNr gnupg-2.2.11/common/t-exechelp.c gnupg-2.2.11.mod/common/t-exechelp.c
+--- gnupg-2.2.11/common/t-exechelp.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/common/t-exechelp.c	2018-12-20 19:16:28.849688830 +0200
+@@ -80,7 +80,7 @@
+ #if 0
+   char buffer[100];
+ 
+-  snprintf (buffer, sizeof buffer, "/bin/ls -l /proc/%d/fd", (int)getpid ());
++  snprintf (buffer, sizeof buffer, "@TERMUX_PREFIX@/bin/ls -l /proc/%d/fd", (int)getpid ());
+   system (buffer);
+ #endif
+ 

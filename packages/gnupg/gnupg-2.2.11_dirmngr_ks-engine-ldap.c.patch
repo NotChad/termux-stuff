@@ -1,0 +1,15 @@
+diff -uNr gnupg-2.2.11/dirmngr/ks-engine-ldap.c gnupg-2.2.11.mod/dirmngr/ks-engine-ldap.c
+--- gnupg-2.2.11/dirmngr/ks-engine-ldap.c	2018-10-25 18:37:53.000000000 +0300
++++ gnupg-2.2.11.mod/dirmngr/ks-engine-ldap.c	2018-12-20 19:04:24.487489727 +0200
+@@ -1947,9 +1947,9 @@
+ 
+   if (dump_modlist)
+     {
+-      dump = es_fopen("/tmp/modlist.txt", "w");
++      dump = es_fopen("@TERMUX_PREFIX@/tmp/modlist.txt", "w");
+       if (! dump)
+-	log_error ("Failed to open /tmp/modlist.txt: %s\n",
++	log_error ("Failed to open @TERMUX_PREFIX@/tmp/modlist.txt: %s\n",
+ 		   strerror (errno));
+ 
+       if (dump)

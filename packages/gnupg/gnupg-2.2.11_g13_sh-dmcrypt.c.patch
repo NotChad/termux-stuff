@@ -1,0 +1,84 @@
+diff -uNr gnupg-2.2.11/g13/sh-dmcrypt.c gnupg-2.2.11.mod/g13/sh-dmcrypt.c
+--- gnupg-2.2.11/g13/sh-dmcrypt.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/g13/sh-dmcrypt.c	2018-12-20 19:17:38.647033840 +0200
+@@ -114,7 +114,7 @@
+ 
+     argv[0] = "deps";
+     argv[1] = NULL;
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, NULL, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, NULL, &result, NULL);
+   }
+   if (err)
+     {
+@@ -439,7 +439,7 @@
+     argv[2] = NULL;
+     log_debug ("now running \"dmsetup create %s\"\n", targetname);
+     log_debug ("  with table='%s'\"\n", table);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, table, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, table, &result, NULL);
+   }
+   if (err)
+     {
+@@ -682,7 +682,7 @@
+     argv[1] = targetname;
+     argv[2] = NULL;
+     log_debug ("now running \"dmsetup create %s\"\n", targetname);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, table, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, table, &result, NULL);
+   }
+   if (err)
+     {
+@@ -705,7 +705,7 @@
+       argv[2] = NULL;
+       log_debug ("now running \"mount %s %s\"\n",
+                  targetname_abs, ctrl->devti->mountpoint);
+-      err = gnupg_exec_tool ("/bin/mount", argv, NULL, &result, NULL);
++      err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/mount", argv, NULL, &result, NULL);
+       if (err)
+         {
+           log_error ("error running mount: %s\n", gpg_strerror (err));
+@@ -802,7 +802,7 @@
+     argv[1] = targetname_abs;
+     argv[2] = NULL;
+     log_debug ("now running \"dmsetup remove %s\"\n", targetname_abs);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, NULL, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, NULL, &result, NULL);
+   }
+   if (err)
+     {
+@@ -871,7 +871,7 @@
+     argv[1] = targetname;
+     argv[2] = NULL;
+     log_debug ("now running \"dmsetup suspend %s\"\n", targetname);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, NULL, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, NULL, &result, NULL);
+   }
+   if (err)
+     {
+@@ -894,7 +894,7 @@
+     argv[3] = "key wipe";
+     argv[4] = NULL;
+     log_debug ("now running \"dmsetup message %s 0 key wipe\"\n", targetname);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, NULL, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, NULL, &result, NULL);
+   }
+   if (err)
+     {
+@@ -994,7 +994,7 @@
+     argv[2] = "0";
+     argv[3] = NULL;
+     log_debug ("now running \"dmsetup message %s 0 [key set]\"\n", targetname);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, hexkey, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, hexkey, &result, NULL);
+   }
+   wipememory (hexkey, sizeof hexkey);
+   if (err)
+@@ -1016,7 +1016,7 @@
+     argv[1] = targetname;
+     argv[2] = NULL;
+     log_debug ("now running \"dmsetup resume %s\"\n", targetname);
+-    err = gnupg_exec_tool ("/sbin/dmsetup", argv, NULL, &result, NULL);
++    err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/dmsetup", argv, NULL, &result, NULL);
+   }
+   if (err)
+     {
