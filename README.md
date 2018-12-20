@@ -7,14 +7,18 @@ An experimental build environment for Termux for creating packages linked with [
 ### Getting started
 
 1. Clone the repository:
-```
-git clone https://github.com/xeffyr/termux-musl.git
-```
+   ```
+   git clone https://github.com/xeffyr/termux-musl.git
+   ```
 
 2. Setup and start environment (requires docker):
-```
-./start-builder.sh
-```
+   ```
+   ./start-builder.sh
+   ```
+   Sometimes, a new docker image may be released. In this case you may need to install the updated image with this command:
+   ```
+   ./scripts/update-docker.sh
+   ```
 
 ### Building cross-compiler
 
@@ -23,7 +27,7 @@ Usually, there no need to rebuild cross-compiler provided with docker image. But
 ./cross-toolchain/build-toolchain.sh
 ```
 
-Note that as target architecture only AArch64 is supported.
+Note that as target architecture only AArch64 and ARM are supported.
 
 ### Building packages
 
@@ -31,5 +35,4 @@ Packages can be built with this command:
 ```
 ./build-package.sh {package}
 ```
-
 Where '{package}' should be replaced with actual name of the package (e.g. bash). To see what packages are available, check directory [./packages](./packages).
