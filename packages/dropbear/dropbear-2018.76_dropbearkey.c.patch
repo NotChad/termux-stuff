@@ -1,0 +1,24 @@
+diff -uNr dropbear-2018.76/dropbearkey.c dropbear-2018.76.mod/dropbearkey.c
+--- dropbear-2018.76/dropbearkey.c	2018-02-27 16:25:10.000000000 +0200
++++ dropbear-2018.76.mod/dropbearkey.c	2018-12-21 23:16:51.075220134 +0200
+@@ -303,7 +303,6 @@
+ 	const char * typestring = NULL;
+ 	char *fp = NULL;
+ 	int len;
+-	struct passwd * pw = NULL;
+ 	char * username = NULL;
+ 	char hostname[100];
+ 
+@@ -325,11 +324,7 @@
+ 	fp = sign_key_fingerprint(buf_getptr(buf, len), len);
+ 
+ 	/* a user@host comment is informative */
+-	username = "";
+-	pw = getpwuid(getuid());
+-	if (pw) {
+-		username = pw->pw_name;
+-	}
++	username = "termux";
+ 
+ 	gethostname(hostname, sizeof(hostname));
+ 	hostname[sizeof(hostname)-1] = '\0';

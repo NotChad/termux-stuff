@@ -1,6 +1,6 @@
 diff -uNr dropbear-2018.76/sysoptions.h dropbear-2018.76.mod/sysoptions.h
 --- dropbear-2018.76/sysoptions.h	2018-02-27 16:25:12.000000000 +0200
-+++ dropbear-2018.76.mod/sysoptions.h	2018-12-21 16:10:12.020308315 +0200
++++ dropbear-2018.76.mod/sysoptions.h	2018-12-21 23:02:21.242666626 +0200
 @@ -71,7 +71,7 @@
  
  #define _PATH_TTY "/dev/tty"

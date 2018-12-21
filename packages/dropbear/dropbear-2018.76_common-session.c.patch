@@ -1,7 +1,7 @@
 diff -uNr dropbear-2018.76/common-session.c dropbear-2018.76.mod/common-session.c
 --- dropbear-2018.76/common-session.c	2018-02-27 16:25:10.000000000 +0200
-+++ dropbear-2018.76.mod/common-session.c	2018-12-21 16:10:11.993641978 +0200
-@@ -570,7 +570,7 @@
++++ dropbear-2018.76.mod/common-session.c	2018-12-21 23:02:21.232666482 +0200
+@@ -570,13 +570,12 @@
  const char* get_user_shell() {
  	/* an empty shell should be interpreted as "/bin/sh" */
  	if (ses.authstate.pw_shell[0] == '\0') {
@@ -10,3 +10,54 @@ diff -uNr dropbear-2018.76/common-session.c dropbear-2018.76.mod/common-session.
  	} else {
  		return ses.authstate.pw_shell;
  	}
+ }
+ void fill_passwd(const char* username) {
+-	struct passwd *pw = NULL;
+ 	if (ses.authstate.pw_name)
+ 		m_free(ses.authstate.pw_name);
+ 	if (ses.authstate.pw_dir)
+@@ -586,30 +585,22 @@
+ 	if (ses.authstate.pw_passwd)
+ 		m_free(ses.authstate.pw_passwd);
+ 
+-	pw = getpwnam(username);
+-	if (!pw) {
+-		return;
++	ses.authstate.pw_uid = getuid();
++	ses.authstate.pw_gid = getgid();
++	ses.authstate.pw_name = m_strdup("termux");
++	ses.authstate.pw_passwd = m_strdup("!!");
++
++	char *userhome = getenv("HOME");
++	if (!userhome) {
++		userhome = "@TERMUX_HOME@";
+ 	}
+-	ses.authstate.pw_uid = pw->pw_uid;
+-	ses.authstate.pw_gid = pw->pw_gid;
+-	ses.authstate.pw_name = m_strdup(pw->pw_name);
+-	ses.authstate.pw_dir = m_strdup(pw->pw_dir);
+-	ses.authstate.pw_shell = m_strdup(pw->pw_shell);
+-	{
+-		char *passwd_crypt = pw->pw_passwd;
+-#ifdef HAVE_SHADOW_H
+-		/* get the shadow password if possible */
+-		struct spwd *spasswd = getspnam(ses.authstate.pw_name);
+-		if (spasswd && spasswd->sp_pwdp) {
+-			passwd_crypt = spasswd->sp_pwdp;
+-		}
+-#endif
+-		if (!passwd_crypt) {
+-			/* android supposedly returns NULL */
+-			passwd_crypt = "!!";
+-		}
+-		ses.authstate.pw_passwd = m_strdup(passwd_crypt);
++	ses.authstate.pw_dir = m_strdup(userhome);
++
++	char *usershell = getenv("SHELL");
++	if (!usershell) {
++		usershell = "@TERMUX_PREFIX@/bin/bash";
+ 	}
++	ses.authstate.pw_shell = m_strdup(usershell);
+ }
+ 
+ /* Called when channels are modified */

@@ -1,0 +1,28 @@
+diff -uNr dropbear-2018.76/dbutil.c dropbear-2018.76.mod/dbutil.c
+--- dropbear-2018.76/dbutil.c	2018-02-27 16:25:10.000000000 +0200
++++ dropbear-2018.76.mod/dbutil.c	2018-12-21 23:08:06.948045313 +0200
+@@ -601,15 +601,16 @@
+ /* Returns malloced path. inpath beginning with '/' is returned as-is,
+ otherwise home directory is prepended */
+ char * expand_homedir_path(const char *inpath) {
+-	struct passwd *pw = NULL;
++	char *userhome = getenv("HOME");
++	if (!userhome) {
++		userhome = "@TERMUX_HOME@";
++	}
++
+ 	if (inpath[0] != '/') {
+-		pw = getpwuid(getuid());
+-		if (pw && pw->pw_dir) {
+-			int len = strlen(inpath) + strlen(pw->pw_dir) + 2;
+-			char *buf = m_malloc(len);
+-			snprintf(buf, len, "%s/%s", pw->pw_dir, inpath);
+-			return buf;
+-		}
++		int len = strlen(inpath) + strlen(userhome) + 2;
++		char *buf = m_malloc(len);
++		snprintf(buf, len, "%s/%s", userhome, inpath);
++		return buf;
+ 	}
+ 
+ 	/* Fallback */

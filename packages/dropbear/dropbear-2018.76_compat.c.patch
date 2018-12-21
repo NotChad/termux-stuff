@@ -1,6 +1,6 @@
 diff -uNr dropbear-2018.76/compat.c dropbear-2018.76.mod/compat.c
 --- dropbear-2018.76/compat.c	2018-02-27 16:25:10.000000000 +0200
-+++ dropbear-2018.76.mod/compat.c	2018-12-21 16:10:11.996975271 +0200
++++ dropbear-2018.76.mod/compat.c	2018-12-21 23:02:21.235999864 +0200
 @@ -232,7 +232,7 @@
  
  static char **initshells() {

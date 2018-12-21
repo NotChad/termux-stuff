@@ -1,6 +1,6 @@
 diff -uNr dropbear-2018.76/svr-authpasswd.c dropbear-2018.76.mod/svr-authpasswd.c
 --- dropbear-2018.76/svr-authpasswd.c	2018-02-27 16:25:12.000000000 +0200
-+++ dropbear-2018.76.mod/svr-authpasswd.c	2018-12-21 16:10:12.010308439 +0200
++++ dropbear-2018.76.mod/svr-authpasswd.c	2018-12-21 23:02:21.239333245 +0200
 @@ -33,36 +33,13 @@
  
  #if DROPBEAR_SVR_PASSWORD_AUTH

@@ -1,0 +1,25 @@
+diff -uNr dropbear-2018.76/loginrec.c dropbear-2018.76.mod/loginrec.c
+--- dropbear-2018.76/loginrec.c	2018-02-27 16:25:12.000000000 +0200
++++ dropbear-2018.76.mod/loginrec.c	2018-12-21 23:10:13.391174215 +0200
+@@ -263,8 +263,6 @@
+ login_init_entry(struct logininfo *li, int pid, const char *username,
+ 		 const char *hostname, const char *line)
+ {
+-	struct passwd *pw;
+-
+ 	memset(li, 0, sizeof(*li));
+ 
+ 	li->pid = pid;
+@@ -275,11 +273,7 @@
+ 
+ 	if (username) {
+ 		strlcpy(li->username, username, sizeof(li->username));
+-		pw = getpwnam(li->username);
+-		if (pw == NULL)
+-			dropbear_exit("login_init_entry: Cannot find user \"%s\"",
+-					li->username);
+-		li->uid = pw->pw_uid;
++		li->uid = getuid();
+ 	}
+ 
+ 	if (hostname)

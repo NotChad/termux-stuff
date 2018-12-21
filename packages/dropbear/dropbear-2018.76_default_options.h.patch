@@ -1,6 +1,6 @@
 diff -uNr dropbear-2018.76/default_options.h dropbear-2018.76.mod/default_options.h
 --- dropbear-2018.76/default_options.h	2018-02-27 16:25:10.000000000 +0200
-+++ dropbear-2018.76.mod/default_options.h	2018-12-21 16:10:11.996975271 +0200
++++ dropbear-2018.76.mod/default_options.h	2018-12-21 23:02:21.235999864 +0200
 @@ -13,15 +13,15 @@
  
  IMPORTANT: Some options will require "make clean" after changes */

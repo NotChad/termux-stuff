@@ -1,6 +1,6 @@
 diff -uNr dropbear-2018.76/gensignkey.c dropbear-2018.76.mod/gensignkey.c
 --- dropbear-2018.76/gensignkey.c	2018-02-27 16:25:10.000000000 +0200
-+++ dropbear-2018.76.mod/gensignkey.c	2018-12-21 16:10:57.799755914 +0200
++++ dropbear-2018.76.mod/gensignkey.c	2018-12-21 23:02:21.235999864 +0200
 @@ -140,16 +140,13 @@
  		goto out;
  	}
