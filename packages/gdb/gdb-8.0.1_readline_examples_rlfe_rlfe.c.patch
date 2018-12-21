@@ -1,0 +1,21 @@
+diff -uNr gdb-8.0.1/readline/examples/rlfe/rlfe.c gdb-8.0.1.mod/readline/examples/rlfe/rlfe.c
+--- gdb-8.0.1/readline/examples/rlfe/rlfe.c	2017-06-04 18:51:27.000000000 +0300
++++ gdb-8.0.1.mod/readline/examples/rlfe/rlfe.c	2018-12-21 20:02:42.475875247 +0200
+@@ -95,7 +95,7 @@
+ #endif
+ 
+ #ifndef ALT_COMMAND
+-#define ALT_COMMAND "/bin/sh"
++#define ALT_COMMAND "@TERMUX_PREFIX@/bin/sh"
+ #endif
+ #ifndef ALT_COMMAND_ARGS
+ #define ALT_COMMAND_ARGS ALT_COMMAND
+@@ -390,7 +390,7 @@
+   int arg_base = 1;
+ 
+ #ifdef DEBUG
+-  logfile = fopen("/tmp/rlfe.log", "w");
++  logfile = fopen("@TERMUX_PREFIX@/tmp/rlfe.log", "w");
+ #endif
+ 
+   while (arg_base<argc)

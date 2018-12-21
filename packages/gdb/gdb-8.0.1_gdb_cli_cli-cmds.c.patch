@@ -1,0 +1,21 @@
+diff -uNr gdb-8.0.1/gdb/cli/cli-cmds.c gdb-8.0.1.mod/gdb/cli/cli-cmds.c
+--- gdb-8.0.1/gdb/cli/cli-cmds.c	2017-09-07 17:28:11.000000000 +0300
++++ gdb-8.0.1.mod/gdb/cli/cli-cmds.c	2018-12-21 20:03:48.595387146 +0200
+@@ -770,7 +770,7 @@
+       close_most_fds ();
+ 
+       if ((user_shell = (char *) getenv ("SHELL")) == NULL)
+-	user_shell = "/bin/sh";
++	user_shell = "@TERMUX_PREFIX@/bin/sh";
+ 
+       /* Get the name of the shell for arg0.  */
+       p = lbasename (user_shell);
+@@ -891,7 +891,7 @@
+     }
+ 
+   if ((editor = (char *) getenv ("EDITOR")) == NULL)
+-      editor = "/bin/ex";
++      editor = "@TERMUX_PREFIX@/bin/applets/vi";
+ 
+   fn = symtab_to_fullname (sal.symtab);
+ 

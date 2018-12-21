@@ -1,0 +1,12 @@
+diff -uNr gdb-8.0.1/gdb/fork-child.c gdb-8.0.1.mod/gdb/fork-child.c
+--- gdb-8.0.1/gdb/fork-child.c	2017-09-07 17:28:11.000000000 +0300
++++ gdb-8.0.1.mod/gdb/fork-child.c	2018-12-21 20:02:37.984892477 +0200
+@@ -37,7 +37,7 @@
+ #include <vector>
+ 
+ /* This just gets used as a default if we can't find SHELL.  */
+-#define SHELL_FILE "/bin/sh"
++#define SHELL_FILE "@TERMUX_PREFIX@/bin/sh"
+ 
+ extern char **environ;
+ 

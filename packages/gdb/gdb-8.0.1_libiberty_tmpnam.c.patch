@@ -1,0 +1,12 @@
+diff -uNr gdb-8.0.1/libiberty/tmpnam.c gdb-8.0.1.mod/libiberty/tmpnam.c
+--- gdb-8.0.1/libiberty/tmpnam.c	2017-06-04 18:51:27.000000000 +0300
++++ gdb-8.0.1.mod/libiberty/tmpnam.c	2018-12-21 19:43:35.295703112 +0200
+@@ -18,7 +18,7 @@
+ #define L_tmpnam 100
+ #endif
+ #ifndef P_tmpdir
+-#define P_tmpdir "/usr/tmp"
++#define P_tmpdir "@TERMUX_PREFIX@/tmp"
+ #endif
+ 
+ static char tmpnam_buffer[L_tmpnam];
