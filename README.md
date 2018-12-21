@@ -41,3 +41,10 @@ Packages can be built with this command:
 ./build-package.sh {package}
 ```
 Where '{package}' should be replaced with actual name of the package (e.g. bash). To see what packages are available, check directory [./packages](./packages).
+
+## Useful links
+
+- [Termux application](https://github.com/termux/termux-app) - application sources on Github.
+- [Termux packages](https://github.com/termux/termux-packages) - package build recipes on Github.
+- [Cross Linux From Scratch (embedded)](http://trac.clfs.org/wiki/download#EmbeddedDevelopment) - learn steps for creating cross-compiling environment.
+- [Alpine Linux aports](https://git.alpinelinux.org/cgit/aports) - patches and package recipes.
