@@ -27,7 +27,12 @@ Usually, there no need to rebuild cross-compiler provided with docker image. But
 ./cross-toolchain/build-toolchain.sh
 ```
 
-Note that as target architecture only AArch64 and ARM are supported.
+By default, cross compiler is built for AArch64. If you need a different architecture, export environment variable `TERMUX_ARCH`. It's value should be a one of: aarch64, arm, i686, x86_64. Example for building ARM cross-compiler:
+```
+TERMUX_ARCH=arm ./cross-toolchain/build-toolchain.sh
+```
+
+When build finishes, you can find toolchain in /opt/termux directory.
 
 ### Building packages
 
