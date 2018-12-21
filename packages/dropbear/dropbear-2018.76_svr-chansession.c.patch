@@ -1,0 +1,37 @@
+diff -uNr dropbear-2018.76/svr-chansession.c dropbear-2018.76.mod/svr-chansession.c
+--- dropbear-2018.76/svr-chansession.c	2018-02-27 16:25:12.000000000 +0200
++++ dropbear-2018.76.mod/svr-chansession.c	2018-12-21 16:12:47.831861697 +0200
+@@ -918,20 +918,6 @@
+ 	seedrandom();
+ #endif
+ 
+-	/* clear environment */
+-	/* if we're debugging using valgrind etc, we need to keep the LD_PRELOAD
+-	 * etc. This is hazardous, so should only be used for debugging. */
+-#ifndef DEBUG_VALGRIND
+-#ifdef HAVE_CLEARENV
+-	clearenv();
+-#else /* don't HAVE_CLEARENV */
+-	/* Yay for posix. */
+-	if (environ) {
+-		environ[0] = NULL;
+-	}
+-#endif /* HAVE_CLEARENV */
+-#endif /* DEBUG_VALGRIND */
+-
+ 	/* We can only change uid/gid as root ... */
+ 	if (getuid() == 0) {
+ 
+@@ -956,12 +942,6 @@
+ 		}
+ 	}
+ 
+-	/* set env vars */
+-	addnewvar("USER", ses.authstate.pw_name);
+-	addnewvar("LOGNAME", ses.authstate.pw_name);
+-	addnewvar("HOME", ses.authstate.pw_dir);
+-	addnewvar("SHELL", get_user_shell());
+-	addnewvar("PATH", DEFAULT_PATH);
+ 	if (chansess->term != NULL) {
+ 		addnewvar("TERM", chansess->term);
+ 	}
