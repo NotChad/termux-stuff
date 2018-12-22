@@ -2,6 +2,7 @@ TERMUX_PKG_HOMEPAGE=https://python.org/
 TERMUX_PKG_DESCRIPTION="Python 3 programming language intended to enable clear programs"
 _MAJOR_VERSION=3.6
 TERMUX_PKG_VERSION=${_MAJOR_VERSION}.6
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=https://www.python.org/ftp/python/${TERMUX_PKG_VERSION}/Python-${TERMUX_PKG_VERSION}.tar.xz
 TERMUX_PKG_SHA256=d79bc15d456e73a3173a2938f18a17e5149c850ebdedf84a78067f501ee6e16f
 TERMUX_PKG_DEPENDS="gdbm, libbz2, libffi, liblzma, libsqlite, ncurses, ncurses-ui-libs, openssl, readline"
@@ -64,28 +65,32 @@ termux_step_post_massage () {
 
 termux_step_create_debscripts () {
 	## POST INSTALL:
-	echo "#!$TERMUX_PREFIX/bin/sh" > postinst
-	echo 'echo "Setting up pip..."' >> postinst
-	# Fix historical mistake which removed bin/pip but left site-packages/pip-*.dist-info,
-	# which causes ensurepip to avoid installing pip due to already existing pip install:
-	echo "if [ ! -f $TERMUX_PREFIX/bin/pip -a -d $TERMUX_PREFIX/lib/python${_MAJOR_VERSION}/site-packages/pip-*.dist-info ]; then rm -Rf $TERMUX_PREFIX/lib/python${_MAJOR_VERSION}/site-packages/pip-*.dist-info ; fi" >> postinst
-	# Setup bin/pip:
-	echo "$TERMUX_PREFIX/bin/python -m ensurepip --upgrade --default-pip" >> postinst
+	{
+		echo "#!$TERMUX_PREFIX/bin/sh"
+		echo 'echo "Setting up pip..."'
+		# Fix historical mistake which removed bin/pip but left site-packages/pip-*.dist-info,
+		# which causes ensurepip to avoid installing pip due to already existing pip install:
+		echo "if [ ! -f $TERMUX_PREFIX/bin/pip -a -d $TERMUX_PREFIX/lib/python${_MAJOR_VERSION}/site-packages/pip-*.dist-info ]; then rm -Rf $TERMUX_PREFIX/lib/python${_MAJOR_VERSION}/site-packages/pip-*.dist-info ; fi"
+		# Setup bin/pip:
+		echo "$TERMUX_PREFIX/bin/python -m ensurepip --upgrade --default-pip"
+		echo "exit 0"
+	} > postinst
 
 	## PRE RM:
 	# Avoid running on update
-	echo "#!$TERMUX_PREFIX/bin/sh" > prerm:
-	echo 'if [ $1 != "remove" ]; then exit 0; fi' >> prerm
-	# Uninstall everything installed through pip:
-	echo "pip freeze 2> /dev/null | xargs pip uninstall -y > /dev/null 2> /dev/null" >> prerm
-	# Cleanup __pycache__ folders:
-	echo "find $TERMUX_PREFIX/lib/python${_MAJOR_VERSION} -depth -name __pycache__ -exec rm -rf {} +" >> prerm
-	# Remove contents of site-packages/ folder:
-	echo "rm -Rf $TERMUX_PREFIX/lib/python${_MAJOR_VERSION}/site-packages/*" >> prerm
-	# Remove pip and easy_install installed by ensurepip in postinst:
-	echo "rm -f $TERMUX_PREFIX/bin/pip $TERMUX_PREFIX/bin/pip3* $TERMUX_PREFIX/bin/easy_install $TERMUX_PREFIX/bin/easy_install-3*" >> prerm
+	{
+		echo "#!$TERMUX_PREFIX/bin/sh"
+		echo 'if [ $1 != "remove" ]; then exit 0; fi'
+		# Uninstall everything installed through pip:
+		echo "pip freeze 2> /dev/null | xargs pip uninstall -y > /dev/null 2> /dev/null"
+		# Cleanup __pycache__ folders:
+		echo "find $TERMUX_PREFIX/lib/python${_MAJOR_VERSION} -depth -name __pycache__ -exec rm -rf {} +"
+		# Remove contents of site-packages/ folder:
+		echo "rm -Rf $TERMUX_PREFIX/lib/python${_MAJOR_VERSION}/site-packages/*"
+		# Remove pip and easy_install installed by ensurepip in postinst:
+		echo "rm -f $TERMUX_PREFIX/bin/pip $TERMUX_PREFIX/bin/pip3* $TERMUX_PREFIX/bin/easy_install $TERMUX_PREFIX/bin/easy_install-3*"
+		echo "exit 0"
+	} > prerm
 
-	echo "exit 0" >> postinst
-	echo "exit 0" >> prerm
 	chmod 0755 postinst prerm
 }
