@@ -4,10 +4,10 @@ TERMUX_PKG_ESSENTIAL=true
 _MAIN_VERSION=4.4
 _PATCH_VERSION=23
 TERMUX_PKG_VERSION=${_MAIN_VERSION}.${_PATCH_VERSION}
-TERMUX_PKG_REVISION=1
+TERMUX_PKG_REVISION=2
 TERMUX_PKG_SRCURL=https://mirrors.kernel.org/gnu/bash/bash-${_MAIN_VERSION}.tar.gz
 TERMUX_PKG_SHA256=d86b3392c1202e8ff5a423b302e6284db7f8f435ea9f39b5b1b20fd3ac36dfcb
-TERMUX_PKG_DEPENDS="musl, ncurses, readline"
+TERMUX_PKG_DEPENDS="musl, ncurses, readline, termux-exec"
 
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="--enable-multibyte --without-bash-malloc --with-installed-readline ac_cv_header_grp_h=no ac_cv_rl_version=7.0"
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" bash_cv_job_control_missing=present"
@@ -23,6 +23,9 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" bash_cv_dev_fd=whacky"
 # - http://permalink.gmane.org/gmane.linux.embedded.yocto.general/25204
 # - https://github.com/termux/termux-app/issues/200
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" bash_cv_getcwd_malloc=yes"
+
+# Fix y.tab.h installation failure.
+TERMUX_PKG_BUILD_IN_SRC=true
 
 TERMUX_PKG_RM_AFTER_INSTALL="share/man/man1/bashbug.1 bin/bashbug"
 
@@ -60,16 +63,25 @@ termux_step_pre_configure () {
 			${PATCH_CHECKSUMS[$patch_number]}
 		patch -p0 -i $PATCHFILE
 	done
+
+	## Fix build error on i686.
+	if [ "${TERMUX_ARCH}" = "i686" ]; then
+		export CC_FOR_BUILD="${TERMUX_HOST_PLATFORM}-gcc -static"
+	fi
 }
 
 termux_step_post_make_install () {
-	sed "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" $TERMUX_PKG_BUILDER_DIR/etc-profile > $TERMUX_PREFIX/etc/profile
-	sed "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-		$TERMUX_PKG_BUILDER_DIR/etc-profile | \
-		sed "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" > \
-		$TERMUX_PREFIX/etc/profile
-	# /etc/bash.bashrc - System-wide .bashrc file for interactive shells. (config-top.h in bash source, patched to enable):
-	sed "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-		$TERMUX_PKG_BUILDER_DIR/etc-bash.bashrc > \
-		$TERMUX_PREFIX/etc/bash.bashrc
+	for script in bash.bashrc profile; do
+		sed \
+			-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
+			-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+			$TERMUX_PKG_BUILDER_DIR/scripts/$script > $TERMUX_PREFIX/etc/$script
+	done
+	unset script
+
+	sed \
+		-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
+		-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+		$TERMUX_PKG_BUILDER_DIR/scripts/login > $TERMUX_PREFIX/bin/login
+	chmod 700 $TERMUX_PREFIX/bin/login
 }

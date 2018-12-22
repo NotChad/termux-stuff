@@ -1,0 +1,20 @@
+if [ -d "@TERMUX_PREFIX@/etc/profile.d" ]; then
+    for profile in @TERMUX_PREFIX@/etc/profile.d/*.sh; do
+        if [ -r "$profile" ]; then
+            . "$profile"
+        fi
+    done
+    unset profile
+fi
+
+if [ -n "$BASH_VERSION" ]; then
+    if [[ "$-" == *"i"* ]]; then
+        if [ -r "@TERMUX_PREFIX@/etc/bash.bashrc" ]; then
+            . @TERMUX_PREFIX@/etc/bash.bashrc
+        fi
+
+        if [ -r "@TERMUX_HOME@/.bashrc" ]; then
+            . @TERMUX_HOME@/.bashrc
+        fi
+    fi
+fi

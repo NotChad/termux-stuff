@@ -1,0 +1,10 @@
+diff -uNr termux-exec-0.3/Makefile termux-exec-0.3.mod/Makefile
+--- termux-exec-0.3/Makefile	2017-10-01 23:11:18.000000000 +0300
++++ termux-exec-0.3.mod/Makefile	2018-12-22 02:38:48.549465788 +0200
+@@ -1,5 +1,5 @@
+ libtermux-exec.so: termux-exec.c
+-	$(CC) $(CFLAGS) -Wall -Wextra -Oz termux-exec.c -shared -fPIC -o libtermux-exec.so
++	$(CC) $(CFLAGS) -Wall -Wextra termux-exec.c -shared -fPIC -o libtermux-exec.so
+ 
+ install: libtermux-exec.so
+ 	install libtermux-exec.so $(PREFIX)/lib/libtermux-exec.so

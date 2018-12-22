@@ -1,0 +1,45 @@
+diff -uNr termux-exec-0.3/termux-exec.c termux-exec-0.3.mod/termux-exec.c
+--- termux-exec-0.3/termux-exec.c	2017-10-01 23:11:18.000000000 +0300
++++ termux-exec-0.3.mod/termux-exec.c	2018-12-22 02:44:27.425629180 +0200
+@@ -1,18 +1,21 @@
+ #include <dlfcn.h>
++#include <fcntl.h>
+ #include <libgen.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+ 
++#define TERMUX_EXEC_PATH "@TERMUX_PREFIX@/bin/"
++
+ static const char* termux_rewrite_executable(const char* filename, char* buffer, int buffer_len)
+ {
+-	strcpy(buffer, "/data/data/com.termux/files/usr/bin/");
++	strcpy(buffer, TERMUX_EXEC_PATH);
+ 	char* bin_match = strstr(filename, "/bin/");
+ 	if (bin_match == filename || bin_match == (filename + 4)) {
+ 		// We have either found "/bin/" at the start of the string or at
+ 		// "/xxx/bin/". Take the path after that.
+-		strncpy(buffer + 36, bin_match + 5, buffer_len - 37);
++		strncpy(buffer + sizeof(TERMUX_EXEC_PATH)-1, bin_match + 5, buffer_len - sizeof(TERMUX_EXEC_PATH)+1);
+ 		filename = buffer;
+ 	}
+ 	return filename;
+@@ -23,7 +26,7 @@
+ 	int fd = -1;
+ 	const char** new_argv = NULL;
+ 
+-	char filename_buffer[512];
++	char filename_buffer[sizeof(TERMUX_EXEC_PATH)+512];
+ 	filename = termux_rewrite_executable(filename, filename_buffer, sizeof(filename_buffer));
+ 
+ 	// Error out if the file is not executable:
+@@ -68,7 +71,7 @@
+ 		}
+ 	}
+ 
+-	char interp_buf[512];
++	char interp_buf[sizeof(TERMUX_EXEC_PATH)+512];
+ 	const char* new_interpreter = termux_rewrite_executable(interpreter, interp_buf, sizeof(interp_buf));
+ 	if (new_interpreter == interpreter) goto final;
+ 
