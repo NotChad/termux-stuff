@@ -11,7 +11,6 @@ TERMUX_PKG_DEPENDS="musl"
 # users and who doesn't work and does not make much sense for Termux.
 # uptime is provided by procps.
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
-gl_cv_host_operating_system=Android
 --disable-xattr
 --enable-no-install-program=pinky,df,chroot,env,users,who,uptime
 --enable-single-binary=symlinks
@@ -20,4 +19,7 @@ gl_cv_host_operating_system=Android
 
 termux_step_pre_configure() {
 	CPPFLAGS+=" -DDEFAULT_TMPDIR=\\\"$TERMUX_PREFIX/tmp\\\""
+	if [ "$TERMUX_ARCH" = "i686" ]; then
+		export TIME_T_32_BIT_OK=yes
+	fi
 }
