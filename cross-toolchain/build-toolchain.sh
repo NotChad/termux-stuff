@@ -14,10 +14,6 @@
 
 set -e -u
 
-: "${TERMUX_ARCH:="aarch64"}"
-: "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
-: "${TERMUX_HOME:="/data/data/com.termux/files/home"}"
-
 ## Don't modify these variables without good reason.
 KERNEL_VERSION="3.16.61"
 KERNEL_SHA256="42d5f6c46d9e4b1dbff04344fef441b219067753dc519c689106fab7e4444d4c"
@@ -40,6 +36,15 @@ MUSL_LIBC_URL="http://www.musl-libc.org/releases/musl-${MUSL_LIBC_VERSION}.tar.g
 
 SCRIPT_PATH=$(realpath "${0}")
 SCRIPT_DIR=$(dirname "${SCRIPT_PATH}")
+TERMUX_CONFIG=$(realpath "${SCRIPT_DIR}/../scripts/termux-config.sh")
+
+if [ -f "${TERMUX_CONFIG}" ]; then
+    . "${TERMUX_CONFIG}"
+fi
+
+: "${TERMUX_ARCH:="aarch64"}"
+: "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
+: "${TERMUX_ANDROID_HOME:="/data/data/com.termux/files/home"}"
 
 ## On Alpine Linux we have CHOST 'x86_64-alpine-linux-musl' but when
 ## cross-compiling it should be specified as *-cross-* or something else.
@@ -174,7 +179,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/binutils/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
                 patch --silent -p1
     done
     unset p
@@ -235,7 +240,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
                 patch --silent -p1 -F3
     done
     unset p
@@ -316,7 +321,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/musl/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
                 patch --silent -p1
     done
     unset p
@@ -382,7 +387,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
                 patch --silent -p1 -F3
     done
     unset p

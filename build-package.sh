@@ -197,6 +197,8 @@ termux_step_handle_arguments() {
 
 # Setup variables used by the build. Not to be overridden by packages.
 termux_step_setup_variables() {
+	# shellcheck source=scripts/termux-config.sh
+	. "$TERMUX_SCRIPTDIR/scripts/termux-config.sh"
 	: "${TERMUX_MAKE_PROCESSES:="$(nproc)"}"
 	: "${TERMUX_TOPDIR:="$HOME/.termux-build"}"
 	: "${TERMUX_ARCH:="aarch64"}" # arm, aarch64, i686 or x86_64.
