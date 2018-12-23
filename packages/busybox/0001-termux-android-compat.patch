@@ -1,6 +1,8 @@
+Termux & Android compatibility patch.
+
 diff -uNr busybox-1.28.4/coreutils/mktemp.c busybox-1.28.4.mod/coreutils/mktemp.c
 --- busybox-1.28.4/coreutils/mktemp.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/coreutils/mktemp.c	2018-12-20 17:01:29.213277201 +0200
++++ busybox-1.28.4.mod/coreutils/mktemp.c	2018-12-23 19:42:16.486237092 +0200
 @@ -50,7 +50,7 @@
  //usage:     "\n	-p DIR	Use DIR as a base directory (implies -t)"
  //usage:     "\n	-u	Do not create anything; print a name"
@@ -20,8 +22,8 @@ diff -uNr busybox-1.28.4/coreutils/mktemp.c busybox-1.28.4.mod/coreutils/mktemp.
  	opts = getopt32(argv, "^" "dqtp:u" "\0" "?1"/*1 arg max*/, &path);
  
 diff -uNr busybox-1.28.4/e2fsprogs/fsck.c busybox-1.28.4.mod/e2fsprogs/fsck.c
---- busybox-1.28.4/e2fsprogs/fsck.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/e2fsprogs/fsck.c	2018-12-20 17:14:53.232011981 +0200
+--- busybox-1.28.4/e2fsprogs/fsck.c	2018-12-23 19:40:44.838415217 +0200
++++ busybox-1.28.4.mod/e2fsprogs/fsck.c	2018-12-23 19:42:16.489570464 +0200
 @@ -1077,7 +1077,7 @@
  	 * so we are scanning it anyway */
  	fstab = getenv("FSTAB_FILE");
@@ -32,9 +34,9 @@ diff -uNr busybox-1.28.4/e2fsprogs/fsck.c busybox-1.28.4.mod/e2fsprogs/fsck.c
  
  	/*interactive = (num_devices == 1) | G.serialize;*/
 diff -uNr busybox-1.28.4/editors/diff.c busybox-1.28.4.mod/editors/diff.c
---- busybox-1.28.4/editors/diff.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/editors/diff.c	2018-12-20 17:20:21.614209885 +0200
-@@ -730,7 +730,7 @@
+--- busybox-1.28.4/editors/diff.c	2018-12-23 19:40:44.838415217 +0200
++++ busybox-1.28.4.mod/editors/diff.c	2018-12-23 19:42:16.489570464 +0200
+@@ -734,7 +734,7 @@
  		 * When we meet non-seekable file, we must make a temp copy.
  		 */
  		if (lseek(fd, 0, SEEK_SET) == -1 && errno == ESPIPE) {
@@ -45,7 +47,7 @@ diff -uNr busybox-1.28.4/editors/diff.c busybox-1.28.4.mod/editors/diff.c
  			unlink(name);
 diff -uNr busybox-1.28.4/include/libbb.h busybox-1.28.4.mod/include/libbb.h
 --- busybox-1.28.4/include/libbb.h	2018-04-01 14:03:43.000000000 +0300
-+++ busybox-1.28.4.mod/include/libbb.h	2018-12-20 17:12:53.268958099 +0200
++++ busybox-1.28.4.mod/include/libbb.h	2018-12-23 19:50:00.916404420 +0200
 @@ -2006,11 +2006,10 @@
  
  #define bb_dev_null "/dev/null"
@@ -66,19 +68,19 @@ diff -uNr busybox-1.28.4/include/libbb.h busybox-1.28.4.mod/include/libbb.h
   * If you change LIBBB_DEFAULT_LOGIN_SHELL,
   * don't forget to change increment constant. */
 -#define LIBBB_DEFAULT_LOGIN_SHELL  "-/bin/sh"
-+#define LIBBB_DEFAULT_LOGIN_SHELL  "-/data/data/com.termux/files/usr/bin/applets/ash"
++#define LIBBB_DEFAULT_LOGIN_SHELL  "-@TERMUX_PREFIX@/bin/applets/ash"
  extern const char bb_default_login_shell[] ALIGN1;
  /* "/bin/sh" */
  #define DEFAULT_SHELL              (bb_default_login_shell+1)
  /* "sh" */
 -#define DEFAULT_SHELL_SHORT_NAME   (bb_default_login_shell+6)
-+#define DEFAULT_SHELL_SHORT_NAME   (bb_default_login_shell+46)
++#define DEFAULT_SHELL_SHORT_NAME   (bb_default_login_shell+sizeof(LIBBB_DEFAULT_LOGIN_SHELL)-4)
  
  /* The following devices are the same on all systems.  */
  #define CURRENT_TTY "/dev/tty"
 diff -uNr busybox-1.28.4/libbb/messages.c busybox-1.28.4.mod/libbb/messages.c
 --- busybox-1.28.4/libbb/messages.c	2018-04-01 14:03:43.000000000 +0300
-+++ busybox-1.28.4.mod/libbb/messages.c	2018-12-20 17:04:36.998956512 +0200
++++ busybox-1.28.4.mod/libbb/messages.c	2018-12-23 19:42:16.492903836 +0200
 @@ -34,10 +34,10 @@
  
  const char bb_busybox_exec_path[] ALIGN1 = CONFIG_BUSYBOX_EXEC_PATH;
@@ -95,7 +97,7 @@ diff -uNr busybox-1.28.4/libbb/messages.c busybox-1.28.4.mod/libbb/messages.c
  //const int const_int_1 = 1;
 diff -uNr busybox-1.28.4/miscutils/crond.c busybox-1.28.4.mod/miscutils/crond.c
 --- busybox-1.28.4/miscutils/crond.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/miscutils/crond.c	2018-12-20 17:01:29.216610513 +0200
++++ busybox-1.28.4.mod/miscutils/crond.c	2018-12-23 19:42:16.492903836 +0200
 @@ -437,7 +437,7 @@
  
  	maxLines = (strcmp(fileName, "root") == 0) ? 65535 : MAXLINES;
@@ -128,7 +130,7 @@ diff -uNr busybox-1.28.4/miscutils/crond.c busybox-1.28.4.mod/miscutils/crond.c
  static void change_user(struct passwd *pas)
 diff -uNr busybox-1.28.4/miscutils/crontab.c busybox-1.28.4.mod/miscutils/crontab.c
 --- busybox-1.28.4/miscutils/crontab.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/miscutils/crontab.c	2018-12-20 17:01:29.219943824 +0200
++++ busybox-1.28.4.mod/miscutils/crontab.c	2018-12-23 19:42:16.492903836 +0200
 @@ -51,12 +51,6 @@
  		return;
  	}
@@ -154,7 +156,7 @@ diff -uNr busybox-1.28.4/miscutils/crontab.c busybox-1.28.4.mod/miscutils/cronta
  		new_fname = xasprintf("%s.new", pas->pw_name);
 diff -uNr busybox-1.28.4/networking/ftpd.c busybox-1.28.4.mod/networking/ftpd.c
 --- busybox-1.28.4/networking/ftpd.c	2018-04-01 14:03:43.000000000 +0300
-+++ busybox-1.28.4.mod/networking/ftpd.c	2018-12-20 17:01:29.219943824 +0200
++++ busybox-1.28.4.mod/networking/ftpd.c	2018-12-23 19:42:16.492903836 +0200
 @@ -1287,8 +1287,6 @@
  		G.root_fd = xopen("/", O_RDONLY | O_DIRECTORY);
  		close_on_exec_on(G.root_fd);
@@ -166,7 +168,7 @@ diff -uNr busybox-1.28.4/networking/ftpd.c busybox-1.28.4.mod/networking/ftpd.c
  			close(G.root_fd);
 diff -uNr busybox-1.28.4/networking/httpd.c busybox-1.28.4.mod/networking/httpd.c
 --- busybox-1.28.4/networking/httpd.c	2018-04-01 14:03:43.000000000 +0300
-+++ busybox-1.28.4.mod/networking/httpd.c	2018-12-20 17:19:36.747312946 +0200
++++ busybox-1.28.4.mod/networking/httpd.c	2018-12-23 19:42:16.496237207 +0200
 @@ -234,7 +234,7 @@
  //usage:     "\n	-i		Inetd mode"
  //usage:     "\n	-f		Don't daemonize"
@@ -214,7 +216,7 @@ diff -uNr busybox-1.28.4/networking/httpd.c busybox-1.28.4.mod/networking/httpd.
  		proxy_fd = socket(lsa->u.sa.sa_family, SOCK_STREAM, 0);
 diff -uNr busybox-1.28.4/networking/telnetd.c busybox-1.28.4.mod/networking/telnetd.c
 --- busybox-1.28.4/networking/telnetd.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/networking/telnetd.c	2018-12-20 17:01:29.223277136 +0200
++++ busybox-1.28.4.mod/networking/telnetd.c	2018-12-23 19:42:16.496237207 +0200
 @@ -159,8 +159,8 @@
  #define G (*(struct globals*)bb_common_bufsiz1)
  #define INIT_G() do { \
@@ -237,7 +239,7 @@ diff -uNr busybox-1.28.4/networking/telnetd.c busybox-1.28.4.mod/networking/teln
  			master_fd = create_and_bind_stream_or_die(opt_bindaddr, portnbr);
 diff -uNr busybox-1.28.4/networking/tftp.c busybox-1.28.4.mod/networking/tftp.c
 --- busybox-1.28.4/networking/tftp.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/networking/tftp.c	2018-12-20 17:01:29.223277136 +0200
++++ busybox-1.28.4.mod/networking/tftp.c	2018-12-23 19:42:16.496237207 +0200
 @@ -865,7 +865,7 @@
  		G.pw = xgetpwnam(user_opt);
  	}
@@ -248,9 +250,9 @@ diff -uNr busybox-1.28.4/networking/tftp.c busybox-1.28.4.mod/networking/tftp.c
  
  	result = recv_from_to(STDIN_FILENO,
 diff -uNr busybox-1.28.4/shell/ash.c busybox-1.28.4.mod/shell/ash.c
---- busybox-1.28.4/shell/ash.c	2018-04-01 14:04:11.000000000 +0300
-+++ busybox-1.28.4.mod/shell/ash.c	2018-12-20 17:13:57.678145559 +0200
-@@ -13921,7 +13921,7 @@
+--- busybox-1.28.4/shell/ash.c	2018-12-23 19:40:44.851748735 +0200
++++ busybox-1.28.4.mod/shell/ash.c	2018-12-23 19:42:16.499570579 +0200
+@@ -13954,7 +13954,7 @@
  		const char *hp;
  
  		state = 1;
@@ -261,7 +263,7 @@ diff -uNr busybox-1.28.4/shell/ash.c busybox-1.28.4.mod/shell/ash.c
  		hp = lookupvar("HOME");
 diff -uNr busybox-1.28.4/shell/hush.c busybox-1.28.4.mod/shell/hush.c
 --- busybox-1.28.4/shell/hush.c	2018-04-01 14:04:11.000000000 +0300
-+++ busybox-1.28.4.mod/shell/hush.c	2018-12-20 17:17:37.906735133 +0200
++++ busybox-1.28.4.mod/shell/hush.c	2018-12-23 19:42:16.499570579 +0200
 @@ -9080,8 +9080,8 @@
  	/* If we are login shell... */
  	if (flags & OPT_login) {
@@ -275,7 +277,7 @@ diff -uNr busybox-1.28.4/shell/hush.c busybox-1.28.4.mod/shell/hush.c
  			install_special_sighandlers();
 diff -uNr busybox-1.28.4/util-linux/mount.c busybox-1.28.4.mod/util-linux/mount.c
 --- busybox-1.28.4/util-linux/mount.c	2018-04-01 14:03:43.000000000 +0300
-+++ busybox-1.28.4.mod/util-linux/mount.c	2018-12-20 17:16:44.061315191 +0200
++++ busybox-1.28.4.mod/util-linux/mount.c	2018-12-23 19:42:16.502903951 +0200
 @@ -638,8 +638,8 @@
  // Return a list of all block device backed filesystems
  static llist_t *get_block_backed_filesystems(void)
@@ -298,7 +300,7 @@ diff -uNr busybox-1.28.4/util-linux/mount.c busybox-1.28.4.mod/util-linux/mount.
  	int rc = EXIT_SUCCESS;
 diff -uNr busybox-1.28.4/util-linux/setarch.c busybox-1.28.4.mod/util-linux/setarch.c
 --- busybox-1.28.4/util-linux/setarch.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/util-linux/setarch.c	2018-12-20 17:01:29.226610448 +0200
++++ busybox-1.28.4.mod/util-linux/setarch.c	2018-12-23 19:42:16.506237323 +0200
 @@ -98,7 +98,7 @@
  
  	argv += optind;
@@ -310,7 +312,7 @@ diff -uNr busybox-1.28.4/util-linux/setarch.c busybox-1.28.4.mod/util-linux/seta
  	BB_EXECVP_or_die(argv);
 diff -uNr busybox-1.28.4/util-linux/swaponoff.c busybox-1.28.4.mod/util-linux/swaponoff.c
 --- busybox-1.28.4/util-linux/swaponoff.c	2018-03-26 02:59:01.000000000 +0300
-+++ busybox-1.28.4.mod/util-linux/swaponoff.c	2018-12-20 17:15:01.329676583 +0200
++++ busybox-1.28.4.mod/util-linux/swaponoff.c	2018-12-23 19:42:16.506237323 +0200
 @@ -234,7 +234,7 @@
  {
  	struct mntent *m;

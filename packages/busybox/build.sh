@@ -9,9 +9,14 @@ TERMUX_PKG_DEPENDS="musl"
 TERMUX_PKG_BUILD_IN_SRC=yes
 
 termux_step_configure () {
-    export CROSS_COMPILE="$TERMUX_HOST_PLATFORM-"
-	cp "$TERMUX_PKG_BUILDER_DIR"/busybox.config .config
-    make silentoldconfig
+	export CROSS_COMPILE="$TERMUX_HOST_PLATFORM-"
+
+	sed \
+		-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
+		-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+		"$TERMUX_PKG_BUILDER_DIR"/busybox.config > .config
+
+	make silentoldconfig
 }
 
 termux_step_post_make_install () {
