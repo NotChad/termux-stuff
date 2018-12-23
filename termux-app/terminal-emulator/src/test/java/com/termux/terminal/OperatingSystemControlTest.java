@@ -1,4 +1,4 @@
-package com.termux.terminal;
+package com.termux.musl.terminal;
 
 import android.util.Base64;
 

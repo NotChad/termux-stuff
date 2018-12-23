@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.termux"
+    package="com.termux.musl"
     android:installLocation="internalOnly"
-    android:sharedUserId="com.termux"
+    android:sharedUserId="com.termux.musl"
     android:sharedUserLabel="@string/shared_user_label" >
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -29,7 +29,7 @@
         <meta-data android:name="android.max_aspect" android:value="10.0" />
 
         <activity
-            android:name="com.termux.app.TermuxActivity"
+            android:name="com.termux.musl.app.TermuxActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
@@ -46,7 +46,7 @@
         </activity>
 
         <activity
-            android:name="com.termux.app.TermuxHelpActivity"
+            android:name="com.termux.musl.app.TermuxHelpActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Material.Light.DarkActionBar"
             android:parentActivityName=".app.TermuxActivity"
@@ -54,9 +54,9 @@
             android:label="@string/application_name" />
 
         <activity
-            android:name="com.termux.filepicker.TermuxFileReceiverActivity"
+            android:name="com.termux.musl.filepicker.TermuxFileReceiverActivity"
             android:label="@string/application_name"
-            android:taskAffinity="com.termux.filereceiver"
+            android:taskAffinity="com.termux.musl.filereceiver"
             android:excludeFromRecents="true"
             android:resizeableActivity="true"
             android:noHistory="true">
@@ -86,7 +86,7 @@
 
         <activity-alias
             android:name=".HomeActivity"
-            android:targetActivity="com.termux.app.TermuxActivity">
+            android:targetActivity="com.termux.musl.app.TermuxActivity">
 
             <!-- Launch activity automatically on boot on Android Things devices -->
             <intent-filter>
@@ -98,7 +98,7 @@
 
         <provider
             android:name=".filepicker.TermuxDocumentsProvider"
-            android:authorities="com.termux.documents"
+            android:authorities="com.termux.musl.documents"
             android:grantUriPermissions="true"
             android:exported="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">
@@ -108,16 +108,16 @@
         </provider>
 
         <service
-            android:name="com.termux.app.TermuxService"
+            android:name="com.termux.musl.app.TermuxService"
             android:exported="false" />
 
         <receiver android:name=".app.TermuxOpenReceiver" />
 
-        <provider android:authorities="com.termux.files"
+        <provider android:authorities="com.termux.musl.files"
                   android:readPermission="android.permission.permRead"
                   android:exported="true"
                   android:grantUriPermissions="true"
-                  android:name="com.termux.app.TermuxOpenReceiver$ContentProvider" />
+                  android:name="com.termux.musl.app.TermuxOpenReceiver$ContentProvider" />
 
         <meta-data android:name="com.sec.android.support.multiwindow" android:value="true" />
     </application>

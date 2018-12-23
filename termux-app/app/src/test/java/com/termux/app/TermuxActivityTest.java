@@ -1,4 +1,4 @@
-package com.termux.app;
+package com.termux.musl.app;
 
 import junit.framework.TestCase;
 

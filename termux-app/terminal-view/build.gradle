@@ -7,7 +7,7 @@ apply plugin: 'com.android.library'
 
 ext {
     bintrayName = 'terminal-view'
-    publishedGroupId = 'com.termux'
+    publishedGroupId = 'com.termux.musl'
     libraryName = 'TerminalView'
     artifact = 'terminal-view'
     libraryDescription = 'The terminal view used in Termux'
