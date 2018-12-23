@@ -42,6 +42,18 @@ Packages can be built with this command:
 ```
 Where '{package}' should be replaced with actual name of the package (e.g. bash). To see what packages are available, check directory [./packages](./packages).
 
+## Known issues
+
+It is not possible to know all issues at the one time, but major ones are:
+
+* Build environment: Alpine Linux doesn't support multilib - both 32 and 64 bit packages at the same time. This may cause serious problems with some packages that require hostbuild.
+* Build environment: Golang in Alpine Linux doesn't support CGO.
+* Build environment: Golang uses invalid path of resolv.conf file path when cross-compiling.
+* Build environment: Rust-based packages are not supported currently - rustup from https://sh.rustup.rs seems supports only glibc-based systems.
+* Build environment: Meson build system is not supported currently.
+* Build environment: Java-based packages (e.g. termux-am) are not supported currently.
+* Musl libc: shared memory functions may throw error '`Bad system call`'. This is because Android allows only ashmem-based shared memory.
+
 ## Useful links
 
 - [Termux application](https://github.com/termux/termux-app) - application sources on Github.
