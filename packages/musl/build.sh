@@ -68,7 +68,7 @@ termux_step_post_make_install() {
 	## Install user/group database
 	sed \
 			-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-			-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+			-e "s|@TERMUX_HOME@|$TERMUX_HOME|" \
 			"$TERMUX_PKG_BUILDER_DIR"/configs/passwd > "$TERMUX_PREFIX"/etc/passwd
 	install -Dm600 "$TERMUX_PKG_BUILDER_DIR/configs/group" "$TERMUX_PREFIX/etc/group"
 }

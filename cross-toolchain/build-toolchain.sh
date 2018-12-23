@@ -44,7 +44,7 @@ fi
 
 : "${TERMUX_ARCH:="aarch64"}"
 : "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
-: "${TERMUX_ANDROID_HOME:="/data/data/com.termux/files/home"}"
+: "${TERMUX_HOME:="/data/data/com.termux/files/home"}"
 
 ## On Alpine Linux we have CHOST 'x86_64-alpine-linux-musl' but when
 ## cross-compiling it should be specified as *-cross-* or something else.
@@ -179,7 +179,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/binutils/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
                 patch --silent -p1
     done
     unset p
@@ -240,7 +240,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
                 patch --silent -p1 -F3
     done
     unset p
@@ -321,7 +321,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/musl/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
                 patch --silent -p1
     done
     unset p
@@ -387,7 +387,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" ]; then
 
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
-            sed "s%\@TERMUX_HOME\@%${TERMUX_ANDROID_HOME}%g" | \
+            sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
                 patch --silent -p1 -F3
     done
     unset p

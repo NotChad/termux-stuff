@@ -74,14 +74,14 @@ termux_step_post_make_install () {
 	for script in bash.bashrc profile; do
 		sed \
 			-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-			-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+			-e "s|@TERMUX_HOME@|$TERMUX_HOME|" \
 			"$TERMUX_PKG_BUILDER_DIR/scripts/$script" > "$TERMUX_PREFIX/etc/$script"
 	done
 	unset script
 
 	sed \
 		-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-		-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+		-e "s|@TERMUX_HOME@|$TERMUX_HOME|" \
 		"$TERMUX_PKG_BUILDER_DIR"/scripts/login > "$TERMUX_PREFIX"/bin/login
 	chmod 700 "$TERMUX_PREFIX"/bin/login
 }

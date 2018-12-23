@@ -13,7 +13,7 @@ termux_step_configure () {
 
 	sed \
 		-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-		-e "s|@TERMUX_HOME@|$TERMUX_ANDROID_HOME|" \
+		-e "s|@TERMUX_HOME@|$TERMUX_HOME|" \
 		"$TERMUX_PKG_BUILDER_DIR"/busybox.config > .config
 
 	make silentoldconfig
