@@ -65,12 +65,13 @@ fi
 readonly PROGRAM_NAME=$(basename "${0}")
 
 ## Version.
-declare -g -r PROGRAM_VERSION="v2.3"
+declare -g -r PROGRAM_VERSION="v2.4"
 
 ## Dependencies.
 declare -r -a MAKEPKG_DEPENDENCIES=(
     'autoconf'
     'automake'
+    'bison'
     'bsdtar'
     'bzip2'
     'coreutils'
@@ -78,6 +79,7 @@ declare -r -a MAKEPKG_DEPENDENCIES=(
     'curl'
     'diffutils'
     'file'
+    'flex'
     'findutils'
     'gawk'
     'grep'
