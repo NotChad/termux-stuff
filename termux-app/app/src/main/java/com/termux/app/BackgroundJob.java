@@ -111,13 +111,12 @@ public final class BackgroundJob {
             final String pathEnv = "PATH=" + System.getenv("PATH");
             return new String[]{termEnv, homeEnv, prefixEnv, androidRootEnv, androidDataEnv, pathEnv, externalStorageEnv};
         } else {
-            final String ldEnv = "LD_LIBRARY_PATH=" + TermuxService.PREFIX_PATH + "/lib";
             final String langEnv = "LANG=en_US.UTF-8";
             final String pathEnv = "PATH=" + TermuxService.PREFIX_PATH + "/bin:" + TermuxService.PREFIX_PATH + "/bin/applets";
             final String pwdEnv = "PWD=" + cwd;
             final String tmpdirEnv = "TMPDIR=" + TermuxService.PREFIX_PATH + "/tmp";
 
-            return new String[]{termEnv, homeEnv, prefixEnv, ldEnv, langEnv, pathEnv, pwdEnv, androidRootEnv, androidDataEnv, externalStorageEnv, tmpdirEnv};
+            return new String[]{termEnv, homeEnv, prefixEnv, langEnv, pathEnv, pwdEnv, androidRootEnv, androidDataEnv, externalStorageEnv, tmpdirEnv};
         }
     }
 

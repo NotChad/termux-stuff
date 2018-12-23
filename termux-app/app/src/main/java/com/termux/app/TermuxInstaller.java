@@ -121,6 +121,13 @@ final class TermuxInstaller {
                                         //noinspection OctalInteger
                                         Os.chmod(targetFile.getAbsolutePath(), 0700);
                                     }
+                                    if (zipEntryName.equals("lib/ld-musl-aarch64.so.1") ||
+                                        zipEntryName.equals("lib/ld-musl-armhf.so.1") ||
+                                        zipEntryName.equals("lib/ld-musl-i386.so.1") ||
+                                        zipEntryName.equals("lib/ld-musl-x86_64.so.1")) {
+                                        //noinspection OctalInteger
+                                        Os.chmod(targetFile.getAbsolutePath(), 0700);
+                                    }
                                 }
                             }
                         }
@@ -186,7 +193,7 @@ final class TermuxInstaller {
     /** Get bootstrap zip url for this systems cpu architecture. */
     static URL determineZipUrl() throws MalformedURLException {
         String archName = determineTermuxArchName();
-        return new URL("https://termux.net/bootstrap/bootstrap-" + archName + ".zip");
+        return new URL("https://xeffyr.ttm.sh/termux/bootstrap/bootstrap-musl-" + archName + ".zip");
     }
 
     private static String determineTermuxArchName() {
