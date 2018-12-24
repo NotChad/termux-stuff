@@ -484,7 +484,7 @@ termux_step_setup_toolchain() {
 	export CC_FOR_BUILD=gcc
 
 	export GOOS=linux
-	export CGO_ENABLED=1
+	export CGO_ENABLED=0
 
 	export CFLAGS="--sysroot=${TERMUX_PREFIX}"
 	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
