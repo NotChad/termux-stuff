@@ -5,7 +5,7 @@ TERMUX_PKG_DESCRIPTION="A generic and open source machine emulator (x86_64)"
 TERMUX_PKG_VERSION=3.1.0
 TERMUX_PKG_SRCURL=https://download.qemu.org/qemu-$TERMUX_PKG_VERSION.tar.xz
 TERMUX_PKG_SHA256=6a0508df079a0a33c2487ca936a56c12122f105b8a96a44374704bef6c69abfc
-TERMUX_PKG_DEPENDS="glib, libbz2, libgcc, liblzo, ncurses, libpixman, libstdc++, musl, zlib"
+TERMUX_PKG_DEPENDS="glib, libbz2, libgcc, liblzo, ncurses, libpixman, libstdc++, musl, qemu-common, zlib"
 TERMUX_PKG_BUILD_IN_SRC=true
 
 TERMUX_PKG_RM_AFTER_INSTALL="
