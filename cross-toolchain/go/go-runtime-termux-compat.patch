@@ -1,0 +1,260 @@
+Modify Go runtime to support Termux's file system layout.
+This makes things like DNS resolver working correctly.
+
+diff -uNr src/cmd/go/internal/bug/bug.go src.mod/cmd/go/internal/bug/bug.go
+--- src/cmd/go/internal/bug/bug.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/cmd/go/internal/bug/bug.go	2018-12-24 13:00:05.887877776 +0000
+@@ -99,12 +99,12 @@
+ 	case "openbsd", "netbsd", "freebsd", "dragonfly":
+ 		printCmdOut(w, "uname -v: ", "uname", "-v")
+ 	case "solaris":
+-		out, err := ioutil.ReadFile("/etc/release")
++		out, err := ioutil.ReadFile("@TERMUX_PREFIX@/etc/release")
+ 		if err == nil {
+-			fmt.Fprintf(w, "/etc/release: %s\n", out)
++			fmt.Fprintf(w, "@TERMUX_PREFIX@/etc/release: %s\n", out)
+ 		} else {
+ 			if cfg.BuildV {
+-				fmt.Printf("failed to read /etc/release: %v\n", err)
++				fmt.Printf("failed to read @TERMUX_PREFIX@/etc/release: %v\n", err)
+ 			}
+ 		}
+ 	}
+diff -uNr src/crypto/x509/root_linux.go src.mod/crypto/x509/root_linux.go
+--- src/crypto/x509/root_linux.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/crypto/x509/root_linux.go	2018-12-24 13:02:58.933605021 +0000
+@@ -6,6 +6,7 @@
+ 
+ // Possible certificate files; stop after finding one.
+ var certFiles = []string{
++	"@TERMUX_PREFIX@/etc/tls/cert.pem",                  // Termux
+ 	"/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo etc.
+ 	"/etc/pki/tls/certs/ca-bundle.crt",                  // Fedora/RHEL 6
+ 	"/etc/ssl/ca-bundle.pem",                            // OpenSUSE
+diff -uNr src/crypto/x509/root_unix.go src.mod/crypto/x509/root_unix.go
+--- src/crypto/x509/root_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/crypto/x509/root_unix.go	2018-12-24 13:02:16.593785752 +0000
+@@ -14,11 +14,12 @@
+ // Possible directories with certificate files; stop after successfully
+ // reading at least one file from a directory.
+ var certDirectories = []string{
+-	"/etc/ssl/certs",               // SLES10/SLES11, https://golang.org/issue/12139
+-	"/system/etc/security/cacerts", // Android
+-	"/usr/local/share/certs",       // FreeBSD
+-	"/etc/pki/tls/certs",           // Fedora/RHEL
+-	"/etc/openssl/certs",           // NetBSD
++	"@TERMUX_PREFIX@/etc/tls/certs", // Termux
++	"/etc/ssl/certs",                // SLES10/SLES11, https://golang.org/issue/12139
++	"/system/etc/security/cacerts",  // Android
++	"/usr/local/share/certs",        // FreeBSD
++	"/etc/pki/tls/certs",            // Fedora/RHEL
++	"/etc/openssl/certs",            // NetBSD
+ }
+ 
+ const (
+diff -uNr src/log/syslog/syslog_unix.go src.mod/log/syslog/syslog_unix.go
+--- src/log/syslog/syslog_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/log/syslog/syslog_unix.go	2018-12-24 13:08:53.702988021 +0000
+@@ -16,7 +16,7 @@
+ 
+ func unixSyslog() (conn serverConn, err error) {
+ 	logTypes := []string{"unixgram", "unix"}
+-	logPaths := []string{"/dev/log", "/var/run/syslog", "/var/run/log"}
++	logPaths := []string{"/dev/log", "@TERMUX_PREFIX@/var/run/syslog", "@TERMUX_PREFIX@/var/run/log"}
+ 	for _, network := range logTypes {
+ 		for _, path := range logPaths {
+ 			conn, err := net.Dial(network, path)
+diff -uNr src/mime/type_unix.go src.mod/mime/type_unix.go
+--- src/mime/type_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/mime/type_unix.go	2018-12-24 13:03:20.766856091 +0000
+@@ -17,9 +17,9 @@
+ }
+ 
+ var typeFiles = []string{
+-	"/etc/mime.types",
+-	"/etc/apache2/mime.types",
+-	"/etc/apache/mime.types",
++	"@TERMUX_PREFIX@/etc/mime.types",
++	"@TERMUX_PREFIX@/etc/apache2/mime.types",
++	"@TERMUX_PREFIX@/etc/apache/mime.types",
+ }
+ 
+ func loadMimeFile(filename string) {
+diff -uNr src/net/conf.go src.mod/net/conf.go
+--- src/net/conf.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/net/conf.go	2018-12-24 13:03:34.893473299 +0000
+@@ -93,10 +93,10 @@
+ 	}
+ 
+ 	if runtime.GOOS != "openbsd" {
+-		confVal.nss = parseNSSConfFile("/etc/nsswitch.conf")
++		confVal.nss = parseNSSConfFile("@TERMUX_PREFIX@/etc/nsswitch.conf")
+ 	}
+ 
+-	confVal.resolv = dnsReadConfig("/etc/resolv.conf")
++	confVal.resolv = dnsReadConfig("@TERMUX_PREFIX@/etc/resolv.conf")
+ 	if confVal.resolv.err != nil && !os.IsNotExist(confVal.resolv.err) &&
+ 		!os.IsPermission(confVal.resolv.err) {
+ 		// If we can't read the resolv.conf file, assume it
+@@ -106,7 +106,7 @@
+ 		confVal.forceCgoLookupHost = true
+ 	}
+ 
+-	if _, err := os.Stat("/etc/mdns.allow"); err == nil {
++	if _, err := os.Stat("@TERMUX_PREFIX@/etc/mdns.allow"); err == nil {
+ 		confVal.hasMDNSAllow = true
+ 	}
+ }
+diff -uNr src/net/dnsclient_unix.go src.mod/net/dnsclient_unix.go
+--- src/net/dnsclient_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/net/dnsclient_unix.go	2018-12-24 12:57:07.122869581 +0000
+@@ -233,7 +233,7 @@
+ 	// resolv.conf twice the first time.
+ 	conf.dnsConfig = systemConf().resolv
+ 	if conf.dnsConfig == nil {
+-		conf.dnsConfig = dnsReadConfig("/etc/resolv.conf")
++		conf.dnsConfig = dnsReadConfig("@TERMUX_PREFIX@/etc/resolv.conf")
+ 	}
+ 	conf.lastChecked = time.Now()
+ 
+@@ -296,7 +296,7 @@
+ 		// For consistency with libc resolvers, report no such host.
+ 		return "", nil, &DNSError{Err: errNoSuchHost.Error(), Name: name}
+ 	}
+-	resolvConf.tryUpdate("/etc/resolv.conf")
++	resolvConf.tryUpdate("@TERMUX_PREFIX@/etc/resolv.conf")
+ 	resolvConf.mu.RLock()
+ 	conf := resolvConf.dnsConfig
+ 	resolvConf.mu.RUnlock()
+@@ -465,7 +465,7 @@
+ 		// See comment in func lookup above about use of errNoSuchHost.
+ 		return nil, "", &DNSError{Err: errNoSuchHost.Error(), Name: name}
+ 	}
+-	resolvConf.tryUpdate("/etc/resolv.conf")
++	resolvConf.tryUpdate("@TERMUX_PREFIX@/etc/resolv.conf")
+ 	resolvConf.mu.RLock()
+ 	conf := resolvConf.dnsConfig
+ 	resolvConf.mu.RUnlock()
+diff -uNr src/net/hook.go src.mod/net/hook.go
+--- src/net/hook.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/net/hook.go	2018-12-24 13:03:39.013459416 +0000
+@@ -10,7 +10,7 @@
+ 	// if non-nil, overrides dialTCP.
+ 	testHookDialTCP func(ctx context.Context, net string, laddr, raddr *TCPAddr) (*TCPConn, error)
+ 
+-	testHookHostsPath = "/etc/hosts"
++	testHookHostsPath = "@TERMUX_PREFIX@/etc/hosts"
+ 	testHookLookupIP  = func(
+ 		ctx context.Context,
+ 		fn func(context.Context, string) ([]IPAddr, error),
+diff -uNr src/net/http/cgi/host.go src.mod/net/http/cgi/host.go
+--- src/net/http/cgi/host.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/net/http/cgi/host.go	2018-12-24 13:07:26.223018890 +0000
+@@ -173,7 +173,7 @@
+ 
+ 	envPath := os.Getenv("PATH")
+ 	if envPath == "" {
+-		envPath = "/bin:/usr/bin:/usr/ucb:/usr/bsd:/usr/local/bin"
++		envPath = "@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets:/system/bin:/system/xbin"
+ 	}
+ 	env = append(env, "PATH="+envPath)
+ 
+diff -uNr src/net/lookup_unix.go src.mod/net/lookup_unix.go
+--- src/net/lookup_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/net/lookup_unix.go	2018-12-24 13:03:44.303441940 +0000
+@@ -16,7 +16,7 @@
+ // readProtocols loads contents of /etc/protocols into protocols map
+ // for quick access.
+ func readProtocols() {
+-	file, err := open("/etc/protocols")
++	file, err := open("@TERMUX_PREFIX@/etc/protocols")
+ 	if err != nil {
+ 		return
+ 	}
+diff -uNr src/net/port_unix.go src.mod/net/port_unix.go
+--- src/net/port_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/net/port_unix.go	2018-12-24 13:03:48.073429729 +0000
+@@ -13,7 +13,7 @@
+ var onceReadServices sync.Once
+ 
+ func readServices() {
+-	file, err := open("/etc/services")
++	file, err := open("@TERMUX_PREFIX@/etc/services")
+ 	if err != nil {
+ 		return
+ 	}
+diff -uNr src/os/file_plan9.go src.mod/os/file_plan9.go
+--- src/os/file_plan9.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/os/file_plan9.go	2018-12-24 13:10:14.016345207 +0000
+@@ -473,7 +473,7 @@
+ }
+ 
+ func tempDir() string {
+-	return "/tmp"
++	return "@TERMUX_PREFIX@/tmp"
+ }
+ 
+ // Chdir changes the current working directory to the file,
+diff -uNr src/os/file_unix.go src.mod/os/file_unix.go
+--- src/os/file_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/os/file_unix.go	2018-12-24 13:10:24.876351837 +0000
+@@ -310,7 +310,7 @@
+ 		if runtime.GOOS == "android" {
+ 			dir = "/data/local/tmp"
+ 		} else {
+-			dir = "/tmp"
++			dir = "@TERMUX_PREFIX@/tmp"
+ 		}
+ 	}
+ 	return dir
+diff -uNr src/os/user/lookup_unix.go src.mod/os/user/lookup_unix.go
+--- src/os/user/lookup_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/os/user/lookup_unix.go	2018-12-24 13:03:54.250076821 +0000
+@@ -17,8 +17,8 @@
+ 	"strings"
+ )
+ 
+-const groupFile = "/etc/group"
+-const userFile = "/etc/passwd"
++const groupFile = "@TERMUX_PREFIX@/etc/group"
++const userFile = "@TERMUX_PREFIX@/etc/passwd"
+ 
+ var colon = []byte{':'}
+ 
+diff -uNr src/syscall/fs_nacl.go src.mod/syscall/fs_nacl.go
+--- src/syscall/fs_nacl.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/syscall/fs_nacl.go	2018-12-24 13:10:30.493022239 +0000
+@@ -88,7 +88,7 @@
+ 	defer func() { fsinit = oldFsinit }()
+ 	fsinit = func() {}
+ 	Mkdir("/dev", 0555)
+-	Mkdir("/tmp", 0777)
++	Mkdir("@TERMUX_PREFIX@/tmp", 0777)
+ 	mkdev("/dev/null", 0666, openNull)
+ 	mkdev("/dev/random", 0444, openRandom)
+ 	mkdev("/dev/urandom", 0444, openRandom)
+diff -uNr src/time/zoneinfo_unix.go src.mod/time/zoneinfo_unix.go
+--- src/time/zoneinfo_unix.go	2018-12-14 23:36:58.000000000 +0000
++++ src.mod/time/zoneinfo_unix.go	2018-12-24 13:07:57.793000285 +0000
+@@ -19,9 +19,9 @@
+ // Many systems use /usr/share/zoneinfo, Solaris 2 has
+ // /usr/share/lib/zoneinfo, IRIX 6 has /usr/lib/locale/TZ.
+ var zoneSources = []string{
+-	"/usr/share/zoneinfo/",
+-	"/usr/share/lib/zoneinfo/",
+-	"/usr/lib/locale/TZ/",
++	"@TERMUX_PREFIX@/share/zoneinfo/",
++	"@TERMUX_PREFIX@/share/lib/zoneinfo/",
++	"@TERMUX_PREFIX@/lib/locale/TZ/",
+ 	runtime.GOROOT() + "/lib/time/zoneinfo.zip",
+ }
+ 
+@@ -34,7 +34,7 @@
+ 	tz, ok := syscall.Getenv("TZ")
+ 	switch {
+ 	case !ok:
+-		z, err := loadLocation("localtime", []string{"/etc/"})
++		z, err := loadLocation("localtime", []string{"@TERMUX_PREFIX@/etc/"})
+ 		if err == nil {
+ 			localLoc = *z
+ 			localLoc.name = "Local"

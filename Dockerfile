@@ -41,6 +41,9 @@ RUN chown builder:builder -Rh /home/builder/termux-musl && \
     su - builder -c "env TERMUX_ARCH=x86_64 /home/builder/termux-musl/cross-toolchain/build-toolchain.sh" && \
     rm -rf /home/builder/termux-musl /home/builder/.toolchain_build
 
+# Apply Termux-specific fixes to the Golang runtime.
+RUN /home/builder/termux-musl/cross-toolchain/sudo-patch-golang.sh
+
 # Prevent using for ldconfig by libtool.
 COPY ./scripts/fake-ldconfig.sh /usr/local/bin/ldconfig
 RUN chmod 755 /usr/local/bin/ldconfig
