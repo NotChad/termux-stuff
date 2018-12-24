@@ -1,0 +1,229 @@
+diff -uNr qemu-3.1.0/block/cloop.c qemu-3.1.0.mod/block/cloop.c
+--- qemu-3.1.0/block/cloop.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/block/cloop.c	2018-12-24 20:35:23.297383382 +0200
+@@ -47,7 +47,7 @@
+ 
+ static int cloop_probe(const uint8_t *buf, int buf_size, const char *filename)
+ {
+-    const char *magic_version_2_0 = "#!/bin/sh\n"
++    const char *magic_version_2_0 = "#!@TERMUX_PREFIX@/bin/sh\n"
+         "#V2.0 Format\n"
+         "modprobe cloop file=$0 && mount -r -t iso9660 /dev/cloop $1\n";
+     int length = strlen(magic_version_2_0);
+diff -uNr qemu-3.1.0/block.c qemu-3.1.0.mod/block.c
+--- qemu-3.1.0/block.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/block.c	2018-12-24 20:35:23.300716891 +0200
+@@ -568,7 +568,7 @@
+     const char *tmpdir;
+     tmpdir = getenv("TMPDIR");
+     if (!tmpdir) {
+-        tmpdir = "/var/tmp";
++        tmpdir = "@TERMUX_PREFIX@/var/tmp";
+     }
+     if (snprintf(filename, size, "%s/vl.XXXXXX", tmpdir) >= size) {
+         return -EOVERFLOW;
+diff -uNr qemu-3.1.0/configure qemu-3.1.0.mod/configure
+--- qemu-3.1.0/configure	2018-12-24 20:28:38.647740517 +0200
++++ qemu-3.1.0.mod/configure	2018-12-24 20:35:23.304050399 +0200
+@@ -2208,23 +2208,10 @@
+ fi
+ 
+ ##########################################
+-# lzo check
++# disable lzo check, force enable instead
+ 
+-if test "$lzo" != "no" ; then
+-    cat > $TMPC << EOF
+-#include <lzo/lzo1x.h>
+-int main(void) { lzo_version(); return 0; }
+-EOF
+-    if compile_prog "" "-llzo2" ; then
+-        libs_softmmu="$libs_softmmu -llzo2"
+-        lzo="yes"
+-    else
+-        if test "$lzo" = "yes"; then
+-            feature_not_found "liblzo2" "Install liblzo2 devel"
+-        fi
+-        lzo="no"
+-    fi
+-fi
++libs_softmmu="$libs_softmmu -llzo2"
++lzo="yes"
+ 
+ ##########################################
+ # snappy check
+@@ -2246,22 +2233,9 @@
+ fi
+ 
+ ##########################################
+-# bzip2 check
++# disable bzip2 check, force enable bz2
+ 
+-if test "$bzip2" != "no" ; then
+-    cat > $TMPC << EOF
+-#include <bzlib.h>
+-int main(void) { BZ2_bzlibVersion(); return 0; }
+-EOF
+-    if compile_prog "" "-lbz2" ; then
+-        bzip2="yes"
+-    else
+-        if test "$bzip2" = "yes"; then
+-            feature_not_found "libbzip2" "Install libbzip2 devel"
+-        fi
+-        bzip2="no"
+-    fi
+-fi
++bzip2="yes"
+ 
+ ##########################################
+ # libseccomp check
+@@ -3068,6 +3042,7 @@
+ # VNC SASL detection
+ if test "$vnc" = "yes" -a "$vnc_sasl" != "no" ; then
+   cat > $TMPC <<EOF
++#include <sys/types.h>
+ #include <sasl/sasl.h>
+ #include <stdio.h>
+ int main(void) { sasl_server_init(NULL, "qemu"); return 0; }
+@@ -4161,16 +4136,6 @@
+ ##########################################
+ # signalfd probe
+ signalfd="no"
+-cat > $TMPC << EOF
+-#include <unistd.h>
+-#include <sys/syscall.h>
+-#include <signal.h>
+-int main(void) { return syscall(SYS_signalfd, -1, NULL, _NSIG / 8); }
+-EOF
+-
+-if compile_prog "" "" ; then
+-  signalfd=yes
+-fi
+ 
+ # check if eventfd is supported
+ eventfd=no
+@@ -5710,7 +5675,7 @@
+ 
+ # We can only support ivshmem if we have eventfd
+ if [ "$eventfd" = "yes" ]; then
+-  ivshmem=yes
++  ivshmem=no
+ fi
+ 
+ tools=""
+diff -uNr qemu-3.1.0/hw/usb/ccid-card-emulated.c qemu-3.1.0.mod/hw/usb/ccid-card-emulated.c
+--- qemu-3.1.0/hw/usb/ccid-card-emulated.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/hw/usb/ccid-card-emulated.c	2018-12-24 20:35:23.307383907 +0200
+@@ -415,7 +415,7 @@
+     event_notifier_cleanup(&card->notifier);
+ }
+ 
+-#define CERTIFICATES_DEFAULT_DB "/etc/pki/nssdb"
++#define CERTIFICATES_DEFAULT_DB "@TERMUX_PREFIX@/etc/pki/nssdb"
+ #define CERTIFICATES_ARGS_TEMPLATE\
+     "db=\"%s\" use_hw=no soft=(,Virtual Reader,CAC,,%s,%s,%s)"
+ 
+diff -uNr qemu-3.1.0/include/net/net.h qemu-3.1.0.mod/include/net/net.h
+--- qemu-3.1.0/include/net/net.h	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/include/net/net.h	2018-12-24 20:35:23.310717416 +0200
+@@ -207,8 +207,8 @@
+ int net_hub_id_for_client(NetClientState *nc, int *id);
+ NetClientState *net_hub_port_find(int hub_id);
+ 
+-#define DEFAULT_NETWORK_SCRIPT "/etc/qemu-ifup"
+-#define DEFAULT_NETWORK_DOWN_SCRIPT "/etc/qemu-ifdown"
++#define DEFAULT_NETWORK_SCRIPT "@TERMUX_PREFIX@/etc/qemu-ifup"
++#define DEFAULT_NETWORK_DOWN_SCRIPT "@TERMUX_PREFIX@/etc/qemu-ifdown"
+ #define DEFAULT_BRIDGE_HELPER CONFIG_QEMU_HELPERDIR "/qemu-bridge-helper"
+ #define DEFAULT_BRIDGE_INTERFACE "br0"
+ 
+diff -uNr qemu-3.1.0/migration/exec.c qemu-3.1.0.mod/migration/exec.c
+--- qemu-3.1.0/migration/exec.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/migration/exec.c	2018-12-24 20:35:23.310717416 +0200
+@@ -28,7 +28,7 @@
+ void exec_start_outgoing_migration(MigrationState *s, const char *command, Error **errp)
+ {
+     QIOChannel *ioc;
+-    const char *argv[] = { "/bin/sh", "-c", command, NULL };
++    const char *argv[] = { "@TERMUX_PREFIX@/bin/sh", "-c", command, NULL };
+ 
+     trace_migration_exec_outgoing(command);
+     ioc = QIO_CHANNEL(qio_channel_command_new_spawn(argv,
+@@ -55,7 +55,7 @@
+ void exec_start_incoming_migration(const char *command, Error **errp)
+ {
+     QIOChannel *ioc;
+-    const char *argv[] = { "/bin/sh", "-c", command, NULL };
++    const char *argv[] = { "@TERMUX_PREFIX@/bin/sh", "-c", command, NULL };
+ 
+     trace_migration_exec_incoming(command);
+     ioc = QIO_CHANNEL(qio_channel_command_new_spawn(argv,
+diff -uNr qemu-3.1.0/net/tap.c qemu-3.1.0.mod/net/tap.c
+--- qemu-3.1.0/net/tap.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/net/tap.c	2018-12-24 20:35:23.314050925 +0200
+@@ -526,7 +526,7 @@
+             *parg++ = helper_cmd;
+             *parg++ = NULL;
+ 
+-            execv("/bin/sh", args);
++            execv("@TERMUX_PREFIX@/bin/sh", args);
+         } else {
+             /* assume helper is just the executable path name */
+ 
+diff -uNr qemu-3.1.0/qemu-nbd.c qemu-3.1.0.mod/qemu-nbd.c
+--- qemu-3.1.0/qemu-nbd.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/qemu-nbd.c	2018-12-24 20:35:23.317384433 +0200
+@@ -43,7 +43,7 @@
+ #include "trace/control.h"
+ #include "qemu-version.h"
+ 
+-#define SOCKET_PATH                "/var/lock/qemu-nbd-%s"
++#define SOCKET_PATH                "@TERMUX_PREFIX@/var/lock/qemu-nbd-%s"
+ #define QEMU_NBD_OPT_CACHE         256
+ #define QEMU_NBD_OPT_AIO           257
+ #define QEMU_NBD_OPT_DISCARD       258
+diff -uNr qemu-3.1.0/slirp/slirp.c qemu-3.1.0.mod/slirp/slirp.c
+--- qemu-3.1.0/slirp/slirp.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/slirp/slirp.c	2018-12-24 20:35:23.320717942 +0200
+@@ -133,7 +133,7 @@
+         return 0;
+     }
+     old_stat = *cached_stat;
+-    if (stat("/etc/resolv.conf", cached_stat) != 0) {
++    if (stat("@TERMUX_PREFIX@/etc/resolv.conf", cached_stat) != 0) {
+         return -1;
+     }
+     if (cached_stat->st_dev == old_stat.st_dev
+@@ -157,7 +157,7 @@
+     void *tmp_addr = alloca(addrlen);
+     unsigned if_index;
+ 
+-    f = fopen("/etc/resolv.conf", "r");
++    f = fopen("@TERMUX_PREFIX@/etc/resolv.conf", "r");
+     if (!f)
+         return -1;
+ 
+diff -uNr qemu-3.1.0/tcg/tcg.c qemu-3.1.0.mod/tcg/tcg.c
+--- qemu-3.1.0/tcg/tcg.c	2018-12-11 19:44:35.000000000 +0200
++++ qemu-3.1.0.mod/tcg/tcg.c	2018-12-24 20:35:23.327384958 +0200
+@@ -3932,7 +3932,7 @@
+     /* Enable this block to be able to debug the ELF image file creation.
+        One can use readelf, objdump, or other inspection utilities.  */
+     {
+-        FILE *f = fopen("/tmp/qemu.jit", "w+b");
++        FILE *f = fopen("@TERMUX_PREFIX@/tmp/qemu.jit", "w+b");
+         if (f) {
+             if (fwrite(img, img_size, 1, f) != img_size) {
+                 /* Avoid stupid unused return value warning for fwrite.  */
+diff -uNr qemu-3.1.0/util/qemu-sockets.c qemu-3.1.0.mod/util/qemu-sockets.c
+--- qemu-3.1.0/util/qemu-sockets.c	2018-12-11 19:44:35.000000000 +0200
++++ qemu-3.1.0.mod/util/qemu-sockets.c	2018-12-24 20:35:23.330718467 +0200
+@@ -841,7 +841,7 @@
+         path = saddr->path;
+     } else {
+         const char *tmpdir = getenv("TMPDIR");
+-        tmpdir = tmpdir ? tmpdir : "/tmp";
++        tmpdir = tmpdir ? tmpdir : "@TERMUX_PREFIX@/tmp";
+         path = pathbuf = g_strdup_printf("%s/qemu-socket-XXXXXX", tmpdir);
+     }
+ 

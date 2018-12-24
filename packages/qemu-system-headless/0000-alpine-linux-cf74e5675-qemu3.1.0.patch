@@ -1,0 +1,280 @@
+diff -uNr qemu-3.1.0/accel/tcg/user-exec.c qemu-3.1.0.mod/accel/tcg/user-exec.c
+--- qemu-3.1.0/accel/tcg/user-exec.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/accel/tcg/user-exec.c	2018-12-24 20:26:38.048270740 +0200
+@@ -286,6 +286,7 @@
+  */
+ #ifdef linux
+ /* All Registers access - only for local access */
++#if defined(__GLIBC__) || defined(__UCLIBC__)
+ #define REG_sig(reg_name, context)              \
+     ((context)->uc_mcontext.regs->reg_name)
+ /* Gpr Registers access  */
+@@ -303,15 +304,42 @@
+ /* Condition register */
+ #define CR_sig(context)                        REG_sig(ccr, context)
+ 
++#else // Musl
++#define REG_sig(reg_num, context)              \
++    ((context)->uc_mcontext.gp_regs[reg_num])
++/* Gpr Registers access  */
++#define GPR_sig(reg_num, context)              REG_sig(gpr[reg_num], context)
++/* Program counter */
++#define IAR_sig(context)                       REG_sig(32, context)
++/* Machine State Register (Supervisor) */
++#define MSR_sig(context)                       REG_sig(33, context)
++/* Count register */
++#define CTR_sig(context)                       REG_sig(35, context)
++/* User's integer exception register */
++#define XER_sig(context)                       REG_sig(37, context)
++/* Link register */
++#define LR_sig(context)                        REG_sig(36, context)
++/* Condition register */
++#define CR_sig(context)                        REG_sig(38, context)
++#endif
++
++
+ /* Float Registers access  */
+ #define FLOAT_sig(reg_num, context)                                     \
+     (((double *)((char *)((context)->uc_mcontext.regs + 48 * 4)))[reg_num])
+ #define FPSCR_sig(context) \
+     (*(int *)((char *)((context)->uc_mcontext.regs + (48 + 32 * 2) * 4)))
+ /* Exception Registers access */
++#if defined(__GLIBC__) || defined(__UCLIBC__)
+ #define DAR_sig(context)                       REG_sig(dar, context)
+ #define DSISR_sig(context)                     REG_sig(dsisr, context)
+ #define TRAP_sig(context)                      REG_sig(trap, context)
++#else // Musl
++#define DAR_sig(context)                       REG_sig(41, context)
++#define DSISR_sig(context)                     REG_sig(42, context)
++#define TRAP_sig(context)                      REG_sig(40, context)
++#endif
++
+ #endif /* linux */
+ 
+ #if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+diff -uNr qemu-3.1.0/configure qemu-3.1.0.mod/configure
+--- qemu-3.1.0/configure	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/configure	2018-12-24 20:26:38.078270713 +0200
+@@ -3365,7 +3365,7 @@
+     curses_inc_list="$($pkg_config --cflags ncurses 2>/dev/null):"
+     curses_lib_list="$($pkg_config --libs ncurses 2>/dev/null):-lpdcurses"
+   else
+-    curses_inc_list="$($pkg_config --cflags ncursesw 2>/dev/null):-I/usr/include/ncursesw:"
++    curses_inc_list="-DNCURSES_WIDECHAR=1 $($pkg_config --cflags ncursesw 2>/dev/null):-I/usr/include/ncursesw:"
+     curses_lib_list="$($pkg_config --libs ncursesw 2>/dev/null):-lncursesw:-lcursesw"
+   fi
+   curses_found=no
+diff -uNr qemu-3.1.0/hw/9pfs/9p.c qemu-3.1.0.mod/hw/9pfs/9p.c
+--- qemu-3.1.0/hw/9pfs/9p.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/hw/9pfs/9p.c	2018-12-24 20:26:38.081604044 +0200
+@@ -26,6 +26,10 @@
+ #include "migration/blocker.h"
+ #include "sysemu/qtest.h"
+ 
++#ifdef __linux__
++#include <linux/limits.h> /* for XATTR_SIZE_MAX */
++#endif
++
+ int open_fd_hw;
+ int total_open_fd;
+ static int open_fd_rc;
+diff -uNr qemu-3.1.0/linux-user/elfload.c qemu-3.1.0.mod/linux-user/elfload.c
+--- qemu-3.1.0/linux-user/elfload.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/linux-user/elfload.c	2018-12-24 20:26:38.038270749 +0200
+@@ -2252,7 +2252,12 @@
+     }
+ 
+     load_addr = loaddr;
+-    if (ehdr->e_type == ET_DYN) {
++    if (pinterp_name != NULL) {
++        /* This is the main executable.  Make sure that the low
++           address does not conflict with MMAP_MIN_ADDR or the
++           QEMU application itself.  */
++        probe_guest_base(image_name, loaddr, hiaddr);
++    } else if (ehdr->e_type == ET_DYN) {
+         /* The image indicates that it can be loaded anywhere.  Find a
+            location that can hold the memory space required.  If the
+            image is pre-linked, LOADDR will be non-zero.  Since we do
+@@ -2264,11 +2269,6 @@
+         if (load_addr == -1) {
+             goto exit_perror;
+         }
+-    } else if (pinterp_name != NULL) {
+-        /* This is the main executable.  Make sure that the low
+-           address does not conflict with MMAP_MIN_ADDR or the
+-           QEMU application itself.  */
+-        probe_guest_base(image_name, loaddr, hiaddr);
+     }
+     load_bias = load_addr - loaddr;
+ 
+diff -uNr qemu-3.1.0/linux-user/host/aarch64/hostdep.h qemu-3.1.0.mod/linux-user/host/aarch64/hostdep.h
+--- qemu-3.1.0/linux-user/host/aarch64/hostdep.h	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/linux-user/host/aarch64/hostdep.h	2018-12-24 20:26:38.041604080 +0200
+@@ -25,7 +25,7 @@
+ static inline void rewind_if_in_safe_syscall(void *puc)
+ {
+     ucontext_t *uc = puc;
+-    __u64 *pcreg = &uc->uc_mcontext.pc;
++    uint64_t *pcreg = &uc->uc_mcontext.pc;
+ 
+     if (*pcreg > (uintptr_t)safe_syscall_start
+         && *pcreg < (uintptr_t)safe_syscall_end) {
+diff -uNr qemu-3.1.0/linux-user/host/ppc64/hostdep.h qemu-3.1.0.mod/linux-user/host/ppc64/hostdep.h
+--- qemu-3.1.0/linux-user/host/ppc64/hostdep.h	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/linux-user/host/ppc64/hostdep.h	2018-12-24 20:26:38.044937410 +0200
+@@ -25,7 +25,11 @@
+ static inline void rewind_if_in_safe_syscall(void *puc)
+ {
+     ucontext_t *uc = puc;
++#if defined(__GLIBC__) || defined(__UCLIBC__)
+     unsigned long *pcreg = &uc->uc_mcontext.gp_regs[PT_NIP];
++#else // Musl
++    unsigned long *pcreg = &uc->uc_mcontext.gp_regs[32];
++#endif
+ 
+     if (*pcreg > (uintptr_t)safe_syscall_start
+         && *pcreg < (uintptr_t)safe_syscall_end) {
+diff -uNr qemu-3.1.0/linux-user/signal.c qemu-3.1.0.mod/linux-user/signal.c
+--- qemu-3.1.0/linux-user/signal.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/linux-user/signal.c	2018-12-24 20:26:38.068270722 +0200
+@@ -26,6 +26,13 @@
+ #include "trace.h"
+ #include "signal-common.h"
+ 
++#ifndef __SIGRTMIN
++#define __SIGRTMIN 32
++#endif
++#ifndef __SIGRTMAX
++#define __SIGRTMAX (NSIG-1)
++#endif
++
+ struct target_sigaltstack target_sigaltstack_used = {
+     .ss_sp = 0,
+     .ss_size = 0,
+@@ -789,6 +796,27 @@
+     }
+ 
+     k = &sigact_table[sig - 1];
++
++    /* This signal will always fail. This causes golang crash since
++     * https://github.com/golang/go/commit/675eb72c285cd0dd44a5f280bb3fa456ddf6de16
++     *
++     * As explained in that commit, these signals are very rarely used in a
++     * way that causes problems, so it's ok-ish to ignore one of them here.
++     */
++    if (sig == 33) {
++        return 0;
++    }
++    /* This signal will fail because QEMU uses SIGRTMAX for itself. This causes
++     * golang to crash for versions earlier than
++     * https://github.com/golang/go/commit/d10675089d74db0408f2432eae3bd89a8e1c2d6a
++     *
++     * Since after that commit golang ignores that signal, we also ignore it here to
++     * allow earlier versions to run as well.
++     */
++    if (sig == 64) {
++        return 0;
++    }
++
+     if (oact) {
+         __put_user(k->_sa_handler, &oact->_sa_handler);
+         __put_user(k->sa_flags, &oact->sa_flags);
+diff -uNr qemu-3.1.0/linux-user/syscall.c qemu-3.1.0.mod/linux-user/syscall.c
+--- qemu-3.1.0/linux-user/syscall.c	2018-12-11 19:44:34.000000000 +0200
++++ qemu-3.1.0.mod/linux-user/syscall.c	2018-12-24 20:26:38.071604053 +0200
+@@ -54,6 +54,7 @@
+ #include <linux/icmp.h>
+ #include <linux/icmpv6.h>
+ #include <linux/errqueue.h>
++#include <linux/sockios.h>
+ #include <linux/random.h>
+ #include "qemu-common.h"
+ #ifdef CONFIG_TIMERFD
+@@ -112,6 +113,13 @@
+ #include "qemu.h"
+ #include "fd-trans.h"
+ 
++#ifndef F_SHLCK
++#define F_SHLCK 8
++#endif
++#ifndef F_EXLCK
++#define F_EXLCK 4
++#endif
++
+ #ifndef CLONE_IO
+ #define CLONE_IO                0x80000000      /* Clone io context */
+ #endif
+@@ -6245,9 +6253,20 @@
+ }
+ 
+ 
+-static inline abi_long target_to_host_sigevent(struct sigevent *host_sevp,
++struct host_sigevent {
++    union sigval sigev_value;
++    int sigev_signo;
++    int sigev_notify;
++    union {
++       int _pad[64-sizeof(int) * 2 + sizeof(union sigval)];
++       int _tid;
++    } _sigev_un;
++};
++
++static inline abi_long target_to_host_sigevent(struct sigevent *sevp,
+                                                abi_ulong target_addr)
+ {
++    struct host_sigevent *host_sevp = (struct host_sigevent *) sevp;
+     struct target_sigevent *target_sevp;
+ 
+     if (!lock_user_struct(VERIFY_READ, target_sevp, target_addr, 1)) {
+diff -uNr qemu-3.1.0/tests/test-crypto-ivgen.c qemu-3.1.0.mod/tests/test-crypto-ivgen.c
+--- qemu-3.1.0/tests/test-crypto-ivgen.c	2018-12-11 19:44:35.000000000 +0200
++++ qemu-3.1.0.mod/tests/test-crypto-ivgen.c	2018-12-24 20:26:38.078270713 +0200
+@@ -88,48 +88,6 @@
+                                "\x00\x00\x00\x00\x00\x00\x00\x00",
+         .niv = 16,
+     },
+-    /* Small */
+-    {
+-        "/crypto/ivgen/essiv/1",
+-        .sector = 0x1,
+-        .ivalg = QCRYPTO_IVGEN_ALG_ESSIV,
+-        .cipheralg = QCRYPTO_CIPHER_ALG_AES_128,
+-        .hashalg = QCRYPTO_HASH_ALG_SHA256,
+-        .key = (const uint8_t *)"\x00\x01\x02\x03\x04\x05\x06\x07"
+-                                "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
+-        .nkey = 16,
+-        .iv = (const uint8_t *)"\xd4\x83\x71\xb2\xa1\x94\x53\x88"
+-                               "\x1c\x7a\x2d\06\x2d\x0b\x65\x46",
+-        .niv = 16,
+-    },
+-    /* Big ! */
+-    {
+-        "/crypto/ivgen/essiv/1f2e3d4c",
+-        .sector = 0x1f2e3d4cULL,
+-        .ivalg = QCRYPTO_IVGEN_ALG_ESSIV,
+-        .cipheralg = QCRYPTO_CIPHER_ALG_AES_128,
+-        .hashalg = QCRYPTO_HASH_ALG_SHA256,
+-        .key = (const uint8_t *)"\x00\x01\x02\x03\x04\x05\x06\x07"
+-                                "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
+-        .nkey = 16,
+-        .iv = (const uint8_t *)"\x5d\x36\x09\x5d\xc6\x9e\x5e\xe9"
+-                               "\xe3\x02\x8d\xd8\x7a\x3d\xe7\x8f",
+-        .niv = 16,
+-    },
+-    /* No Truncation */
+-    {
+-        "/crypto/ivgen/essiv/1f2e3d4c5b6a7988",
+-        .sector = 0x1f2e3d4c5b6a7988ULL,
+-        .ivalg = QCRYPTO_IVGEN_ALG_ESSIV,
+-        .cipheralg = QCRYPTO_CIPHER_ALG_AES_128,
+-        .hashalg = QCRYPTO_HASH_ALG_SHA256,
+-        .key = (const uint8_t *)"\x00\x01\x02\x03\x04\x05\x06\x07"
+-                                "\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
+-        .nkey = 16,
+-        .iv = (const uint8_t *)"\x58\xbb\x81\x94\x51\x83\x23\x23"
+-                               "\x7a\x08\x93\xa9\xdc\xd2\xd9\xab",
+-        .niv = 16,
+-    },
+ };
+ 
+ 
