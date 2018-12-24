@@ -46,7 +46,7 @@ Where '{package}' should be replaced with actual name of the package (e.g. bash)
 
 It is not possible to know all issues at the one time, but major ones are:
 
-* Build environment: Alpine Linux doesn't support multilib - both 32 and 64 bit packages at the same time. This may cause serious problems with some packages that require hostbuild.
+* Build environment: Alpine Linux doesn't support multilib (both 32 and 64 bit packages at the same time). This may cause serious problems with some packages that require hostbuild.
 * Build environment: Golang in Alpine Linux doesn't support CGO.
 * Build environment: Rust-based packages are not supported currently - rustup from https://sh.rustup.rs seems supports only glibc-based systems.
 * Build environment: Meson build system is not supported currently.
