@@ -106,6 +106,8 @@ public final class BackgroundJob {
         // EXTERNAL_STORAGE is needed for /system/bin/am to work on at least
         // Samsung S7 - see https://plus.google.com/110070148244138185604/posts/gp8Lk3aCGp3.
         final String externalStorageEnv = "EXTERNAL_STORAGE=" + System.getenv("EXTERNAL_STORAGE");
+        // Required by some cli programs.
+        final String xdgRuntimeDir = "XDG_RUNTIME_DIR=" + TermuxService.PREFIX_PATH + "/var/run/termux";
         if (failSafe) {
             // Keep the default path so that system binaries can be used in the failsafe session.
             final String pathEnv = "PATH=" + System.getenv("PATH");
@@ -116,7 +118,7 @@ public final class BackgroundJob {
             final String pwdEnv = "PWD=" + cwd;
             final String tmpdirEnv = "TMPDIR=" + TermuxService.PREFIX_PATH + "/tmp";
 
-            return new String[]{termEnv, homeEnv, prefixEnv, langEnv, pathEnv, pwdEnv, androidRootEnv, androidDataEnv, externalStorageEnv, tmpdirEnv};
+            return new String[]{termEnv, homeEnv, prefixEnv, langEnv, pathEnv, pwdEnv, androidRootEnv, androidDataEnv, externalStorageEnv, tmpdirEnv, xdgRuntimeDir};
         }
     }
 
