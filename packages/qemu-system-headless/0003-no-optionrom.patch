@@ -1,0 +1,11 @@
+diff -uNr qemu-3.1.0/configure qemu-3.1.0.mod/configure
+--- qemu-3.1.0/configure	2019-01-05 17:14:41.873978630 +0200
++++ qemu-3.1.0.mod/configure	2019-01-05 17:15:00.747353322 +0200
+@@ -5807,7 +5807,6 @@
+     for emu in elf_i386 elf_i386_fbsd elf_i386_obsd i386pe; do
+         if "$ld" -verbose 2>&1 | grep -q "^[[:space:]]*$emu[[:space:]]*$"; then
+             ld_i386_emulation="$emu"
+-            roms="optionrom"
+             break
+         fi
+     done
