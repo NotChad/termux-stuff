@@ -2,6 +2,7 @@ TERMUX_PKG_HOMEPAGE=https://packages.debian.org/apt
 TERMUX_PKG_DESCRIPTION="Front-end for the dpkg package manager"
 TERMUX_PKG_ESSENTIAL=true
 TERMUX_PKG_VERSION=1.4.8
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=http://ftp.debian.org/debian/pool/main/a/apt/apt_$TERMUX_PKG_VERSION.tar.xz
 TERMUX_PKG_SHA256=767ad7d6efb64cde52faececb7d3c0bf49800b9fe06f3a5b0132ab4c01a5b8f8
 TERMUX_PKG_DEPENDS="dash, dpkg, gpgv, libcurl, liblzma, libstdc++, musl, zlib"
@@ -41,7 +42,7 @@ share/bash-completion
 "
 
 termux_step_post_make_install() {
-	printf "# The main termux repository:\ndeb https://xeffyr.ttm.sh/termux/ musl main\n" > "$TERMUX_PREFIX"/etc/apt/sources.list
+	printf "# The main termux repository:\ndeb https://termux-musl.ml/ musl main\n" > "$TERMUX_PREFIX"/etc/apt/sources.list
 	mkdir -p "$TERMUX_PREFIX"/etc/apt/trusted.gpg.d
 	cp "$TERMUX_PKG_BUILDER_DIR"/xeffyr.gpg "$TERMUX_PREFIX"/etc/apt/trusted.gpg.d/xeffyr.gpg
 	rm "$TERMUX_PREFIX"/include/apt-pkg -r
