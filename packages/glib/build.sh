@@ -1,9 +1,10 @@
 TERMUX_PKG_HOMEPAGE=https://developer.gnome.org/glib/
 TERMUX_PKG_DESCRIPTION="Library providing core building blocks for libraries and applications written in C"
 TERMUX_PKG_VERSION=2.58.1
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=https://ftp.gnome.org/pub/gnome/sources/glib/${TERMUX_PKG_VERSION:0:4}/glib-$TERMUX_PKG_VERSION.tar.xz
 TERMUX_PKG_SHA256=97d6a9d926b6aa3dfaadad3077cfb43eec74432ab455dff14250c769d526d7d6
-TERMUX_PKG_DEPENDS="libffi, pcre, zlib"
+TERMUX_PKG_DEPENDS="libffi, musl, pcre, zlib"
 TERMUX_PKG_DEVPACKAGE_DEPENDS="pcre-dev"
 TERMUX_PKG_RM_AFTER_INSTALL="share/gtk-doc lib/locale share/glib-2.0/gettext share/gdb/auto-load share/glib-2.0/codegen share/glib-2.0/gdb bin/gtester-report bin/glib-gettextize bin/gdbus-codegen"
 # Needed by pkg-config for glib-2.0:
