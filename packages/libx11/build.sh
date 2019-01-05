@@ -10,5 +10,5 @@ TERMUX_PKG_RECOMMENDS="xorg-xauth"
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="--disable-xthreads --enable-malloc0returnsnull"
 
 termux_step_post_make_install() {
-	ln -sfr "${TERMUX_PREFIX}/lib/libX11.so" "${TERMUX_PREFIX}/lib/libX11.so.6"
+	ln -sfr $TERMUX_PREFIX/lib/libX11.so $TERMUX_PREFIX/lib/libX11.so.6
 }
