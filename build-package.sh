@@ -471,7 +471,7 @@ termux_step_setup_toolchain() {
 	# We put this after system PATH to avoid picking up toolchain stripped python
 	export PATH=$PATH:$TERMUX_STANDALONE_TOOLCHAIN/bin
 
-	export AS=${TERMUX_HOST_PLATFORM}-as
+	export AS=$TERMUX_HOST_PLATFORM-as
 	export CC=$TERMUX_HOST_PLATFORM-gcc
 	export CXX=$TERMUX_HOST_PLATFORM-g++
 	export AR=$TERMUX_HOST_PLATFORM-ar
@@ -481,7 +481,12 @@ termux_step_setup_toolchain() {
 	export RANLIB=$TERMUX_HOST_PLATFORM-ranlib
 	export READELF=$TERMUX_HOST_PLATFORM-readelf
 	export STRIP=$TERMUX_HOST_PLATFORM-strip
-	export CC_FOR_BUILD=gcc
+
+	if [ $TERMUX_ARCH = i686 ]; then
+		CC_FOR_BUILD="$TERMUX_HOST_PLATFORM-gcc -static"
+	else
+		CC_FOR_BUILD=gcc
+	fi
 
 	export GOOS=linux
 	export CGO_ENABLED=0

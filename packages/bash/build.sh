@@ -63,11 +63,6 @@ termux_step_pre_configure () {
 			"${PATCH_CHECKSUMS[$patch_number]}"
 		patch -p0 -i "$PATCHFILE"
 	done
-
-	## Fix build error on i686.
-	if [ "$TERMUX_ARCH" = "i686" ]; then
-		export CC_FOR_BUILD="$TERMUX_HOST_PLATFORM-gcc -static"
-	fi
 }
 
 termux_step_post_make_install () {
