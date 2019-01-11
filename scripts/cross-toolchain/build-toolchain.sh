@@ -18,25 +18,25 @@ set -e -u
 KERNEL_VERSION="3.16.61"
 KERNEL_SHA256="42d5f6c46d9e4b1dbff04344fef441b219067753dc519c689106fab7e4444d4c"
 
-BINUTILS_VERSION="2.30"
-BINUTILS_SHA256="efeade848067e9a03f1918b1da0d37aaffa0b0127a06b5e9236229851d9d0c09"
+BINUTILS_VERSION="2.31.1"
+BINUTILS_SHA256="e88f8d36bd0a75d3765a4ad088d819e35f8d7ac6288049780e2fefcad18dde88"
 
-GCC_VERSION="6.4.0"
-GCC_SHA256="850bf21eafdfe5cd5f6827148184c08c4a0852a37ccf36ce69855334d2c914d4"
+GCC_VERSION="8.2.0"
+GCC_SHA256="196c3c04ba2613f893283977e6011b2345d1cd1af9abeac58e916b1aab3e0080"
 
-MUSL_LIBC_VERSION="1.1.19"
-MUSL_LIBC_SHA256="db59a8578226b98373f5b27e61f0dd29ad2456f4aa9cec587ba8c24508e4c1d9"
+MUSL_LIBC_VERSION="1.1.20"
+MUSL_LIBC_SHA256="44be8771d0e6c6b5f82dd15662eb2957c9a3173a19a8b49966ac0542bbd40d61"
 
 ################################################################################
 
 KERNEL_URL="https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-${KERNEL_VERSION}.tar.xz"
-BINUTILS_URL="http://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.bz2"
-GCC_URL="http://gcc.gnu.org/pub/gcc/releases/gcc-${GCC_VERSION:0:3}.0/gcc-${GCC_VERSION}.tar.xz"
+BINUTILS_URL="https://mirrors.kernel.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.gz"
+GCC_URL="http://mirrors.kernel.org/gnu/gcc/gcc-${GCC_VERSION:0:3}.0/gcc-${GCC_VERSION}.tar.xz"
 MUSL_LIBC_URL="http://www.musl-libc.org/releases/musl-${MUSL_LIBC_VERSION}.tar.gz"
 
 SCRIPT_PATH=$(realpath "${0}")
 SCRIPT_DIR=$(dirname "${SCRIPT_PATH}")
-TERMUX_CONFIG=$(realpath "${SCRIPT_DIR}/../scripts/termux-config.sh")
+TERMUX_CONFIG=$(realpath "${SCRIPT_DIR}/../termux-config.sh")
 
 if [ -f "${TERMUX_CONFIG}" ]; then
     . "${TERMUX_CONFIG}"
@@ -45,11 +45,10 @@ fi
 : "${TERMUX_ARCH:="aarch64"}"
 : "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
 : "${TERMUX_HOME:="/data/data/com.termux/files/home"}"
+: "${TOOLCHAIN_BASE_DIR:="/opt/termux"}"
+: "${TOOLCHAIN_BUILD_MAKE_JOBS:="$(nproc)"}"
 
-## On Alpine Linux we have CHOST 'x86_64-alpine-linux-musl' but when
-## cross-compiling it should be specified as *-cross-* or something else.
-TERMUX_CHOST="x86_64-cross-linux-musl"
-
+TERMUX_CHOST="x86_64-cross-linux-gnu"
 if [ "${TERMUX_ARCH}" = "aarch64" ]; then
     TERMUX_CTARGET="aarch64-termux-linux-musl"
 elif [ "${TERMUX_ARCH}" = "arm" ]; then
@@ -70,10 +69,11 @@ export CPP="/usr/bin/cpp"
 TOOLCHAIN_BUILD_DIR="${HOME}/.toolchain_build"
 TOOLCHAIN_OUTPUT_DIR_NAME="toolchain-${TERMUX_ARCH}"
 TOOLCHAIN_OUTPUT_DIR="${TOOLCHAIN_BUILD_DIR}/${TOOLCHAIN_OUTPUT_DIR_NAME}"
-TOOLCHAIN_PREFIX="/opt/termux/${TOOLCHAIN_OUTPUT_DIR_NAME}"
+TOOLCHAIN_PREFIX="${TOOLCHAIN_BASE_DIR}/${TOOLCHAIN_OUTPUT_DIR_NAME}"
 
 mkdir -p "${TOOLCHAIN_BUILD_DIR}"
 mkdir -p "${TOOLCHAIN_OUTPUT_DIR}"
+mkdir -p "${TOOLCHAIN_PREFIX}"
 
 ## Add our cross-compiler to the PATH.
 export PATH="${PATH}:${TOOLCHAIN_PREFIX}/bin"
@@ -160,7 +160,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/linux-headers-pkg.tar.gz" ]; then
 fi
 
 echo "[*] Installing Linux API headers..."
-tar xf "${TOOLCHAIN_BUILD_DIR}/linux-headers-pkg.tar.gz" -C "/opt/termux"
+tar xf "${TOOLCHAIN_BUILD_DIR}/linux-headers-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
 
 ################################################################################
 ##
@@ -172,9 +172,9 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" ]; then
     mkdir -p "${TOOLCHAIN_BUILD_DIR}/binutils"
     cd "${TOOLCHAIN_BUILD_DIR}/binutils"
 
-    download_file binutils.tar.bz2 "${BINUTILS_URL}" "${BINUTILS_SHA256}"
+    download_file binutils.tar.gz "${BINUTILS_URL}" "${BINUTILS_SHA256}"
     rm -rf "binutils-${BINUTILS_VERSION}"
-    tar xf binutils.tar.bz2
+    tar xf binutils.tar.gz
     cd "binutils-${BINUTILS_VERSION}"
 
     for p in "${SCRIPT_DIR}"/binutils/*.patch; do
@@ -215,13 +215,13 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" ]; then
         --with-system-zlib
     unset _arch_configure
 
-    make -j "$(nproc)"
+    make -j "${TOOLCHAIN_BUILD_MAKE_JOBS}"
     make install DESTDIR="${TOOLCHAIN_OUTPUT_DIR}"
-    store_built_files "binutils-pkg.tar.gz" "${TOOLCHAIN_OUTPUT_DIR}/opt/termux"
+    store_built_files "binutils-pkg.tar.gz" "${TOOLCHAIN_OUTPUT_DIR}/${TOOLCHAIN_BASE_DIR}"
 fi
 
 echo "[*] Installing Binutils..."
-tar xf "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" -C "/opt/termux"
+tar xf "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
 
 ################################################################################
 ##
@@ -241,7 +241,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" ]; then
     for p in "${SCRIPT_DIR}"/gcc/*.patch; do
         sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "${p}" | \
             sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | \
-                patch --silent -p1 -F3
+                patch --silent -p1
     done
     unset p
 
@@ -268,6 +268,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" ]; then
         --target="${TERMUX_CTARGET}" \
         --with-pkgversion="Termux ${GCC_VERSION}" \
         --enable-checking=release \
+        --enable-clocale=generic \
         --disable-fixed-point \
         --disable-libstdcxx-pch \
         --disable-multilib \
@@ -296,13 +297,13 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" ]; then
         --with-linker-hash-style=gnu
     unset _arch_configure
 
-    make -j "$(nproc)"
+    make -j "${TOOLCHAIN_BUILD_MAKE_JOBS}"
     make -j1 install DESTDIR="${TOOLCHAIN_OUTPUT_DIR}"
-    store_built_files "gcc-bootstrap-pkg.tar.gz" "${TOOLCHAIN_OUTPUT_DIR}/opt/termux"
+    store_built_files "gcc-bootstrap-pkg.tar.gz" "${TOOLCHAIN_OUTPUT_DIR}/${TOOLCHAIN_BASE_DIR}"
 fi
 
 echo "[*] Installing GCC (bootstrap)..."
-tar xf "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" -C "/opt/termux"
+tar xf "${TOOLCHAIN_BUILD_DIR}/gcc-bootstrap-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
 
 ################################################################################
 ##
@@ -368,7 +369,7 @@ EOF
 fi
 
 echo "[*] Installing Musl libc..."
-tar xf "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" -C "/opt/termux"
+tar xf "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
 
 ################################################################################
 ##
@@ -414,6 +415,7 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" ]; then
         --target="${TERMUX_CTARGET}" \
         --with-pkgversion="Termux ${GCC_VERSION}" \
         --enable-checking=release \
+        --enable-clocale=generic \
         --disable-fixed-point \
         --disable-libstdcxx-pch \
         --disable-multilib \
@@ -442,9 +444,9 @@ if [ ! -e "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" ]; then
         --with-linker-hash-style=gnu
     unset _arch_configure
 
-    make -j "$(nproc)"
+    make -j "${TOOLCHAIN_BUILD_MAKE_JOBS}"
     make -j1 install DESTDIR="${TOOLCHAIN_OUTPUT_DIR}"
-    store_built_files "gcc-final-pkg.tar.gz" "${TOOLCHAIN_OUTPUT_DIR}/opt/termux"
+    store_built_files "gcc-final-pkg.tar.gz" "${TOOLCHAIN_OUTPUT_DIR}/${TOOLCHAIN_BASE_DIR}"
 fi
 
 ################################################################################
@@ -454,10 +456,10 @@ fi
 
 echo "[*] Installing bootstrap toolchain..."
 rm -rf "${TOOLCHAIN_PREFIX}"
-tar xf "${TOOLCHAIN_BUILD_DIR}/linux-headers-pkg.tar.gz" -C "/opt/termux"
-tar xf "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" -C "/opt/termux"
-tar xf "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" -C "/opt/termux"
-tar xf "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" -C "/opt/termux"
+tar xf "${TOOLCHAIN_BUILD_DIR}/linux-headers-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
+tar xf "${TOOLCHAIN_BUILD_DIR}/binutils-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
+tar xf "${TOOLCHAIN_BUILD_DIR}/musl-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
+tar xf "${TOOLCHAIN_BUILD_DIR}/gcc-final-pkg.tar.gz" -C "${TOOLCHAIN_BASE_DIR}"
 rm -rf "${TOOLCHAIN_BUILD_DIR}"
 
 echo "[*] Stripping toolchain binaries..."

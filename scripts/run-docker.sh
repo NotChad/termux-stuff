@@ -31,7 +31,7 @@ docker start "${CONTAINER_NAME}" > /dev/null 2> /dev/null || {
 }
 
 if [ "${#}" -eq  "0" ]; then
-    docker exec --interactive --tty --user "${CONTAINER_USER}" "${CONTAINER_NAME}" ash
+    docker exec --interactive --tty --user "${CONTAINER_USER}" "${CONTAINER_NAME}" bash
 else
     docker exec --interactive --tty --user "${CONTAINER_USER}" "${CONTAINER_NAME}" "${@}"
 fi
