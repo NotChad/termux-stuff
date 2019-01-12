@@ -89,10 +89,13 @@ termux_setup_golang() {
 # Utility function for rust-using packages to setup a rust toolchain.
 termux_setup_rust() {
 	if [ $TERMUX_ARCH = "arm" ]; then
-		CARGO_TARGET_NAME=armv7-linux-androideabi
+		CARGO_TARGET_NAME=armv7-unknown-linux-musleabihf
 	else
-		CARGO_TARGET_NAME=$TERMUX_ARCH-linux-android
+		CARGO_TARGET_NAME=$TERMUX_ARCH-unknown-linux-musl
 	fi
+
+	# This fixes errors like "undefined reference to `__multf3'".
+	export RUSTFLAGS="-Clink-arg=-lgcc"
 
 	local ENV_NAME=CARGO_TARGET_${CARGO_TARGET_NAME^^}_LINKER
 	ENV_NAME=${ENV_NAME//-/_}
