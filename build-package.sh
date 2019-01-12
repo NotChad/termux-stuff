@@ -58,6 +58,34 @@ termux_download() {
 	termux_error_exit "Failed to download $URL"
 }
 
+# Utility function for golang-using packages to setup a go toolchain.
+termux_setup_golang() {
+	local TERMUX_GO_VERSION=go1.11.4
+	local TERMUX_GO_PLATFORM=linux-amd64
+
+	local TERMUX_BUILDGO_FOLDER=$TERMUX_COMMON_CACHEDIR/${TERMUX_GO_VERSION}
+	export GOROOT=$TERMUX_BUILDGO_FOLDER
+	export PATH=$GOROOT/bin:$PATH
+
+	if [ -d "$TERMUX_BUILDGO_FOLDER" ]; then return; fi
+
+	local TERMUX_BUILDGO_TAR=$TERMUX_COMMON_CACHEDIR/${TERMUX_GO_VERSION}.${TERMUX_GO_PLATFORM}.tar.gz
+	rm -Rf "$TERMUX_COMMON_CACHEDIR/go" "$TERMUX_BUILDGO_FOLDER"
+	termux_download https://storage.googleapis.com/golang/${TERMUX_GO_VERSION}.${TERMUX_GO_PLATFORM}.tar.gz \
+		"$TERMUX_BUILDGO_TAR" \
+		fb26c30e6a04ad937bbc657a1b5bba92f80096af1e8ee6da6430c045a8db3a5b
+
+	(
+		cd "$TERMUX_COMMON_CACHEDIR"
+		tar xf "$TERMUX_BUILDGO_TAR"
+		mv go "$TERMUX_BUILDGO_FOLDER"
+		rm "$TERMUX_BUILDGO_TAR"
+		cd "$TERMUX_BUILDGO_FOLDER"
+		sed "s%\@TERMUX_PREFIX\@%${TERMUX_PREFIX}%g" "$TERMUX_SCRIPTDIR/scripts/cross-toolchain/go/${TERMUX_GO_VERSION}-runtime-termux-compat.patch" | \
+			sed "s%\@TERMUX_HOME\@%${TERMUX_HOME}%g" | patch -p0
+	)
+}
+
 # Utility function for rust-using packages to setup a rust toolchain.
 termux_setup_rust() {
 	if [ $TERMUX_ARCH = "arm" ]; then
@@ -77,8 +105,25 @@ termux_setup_rust() {
 	rustup target add $CARGO_TARGET_NAME
 }
 
+# Utility function to setup a current ninja build system.
+termux_setup_ninja() {
+	local NINJA_VERSION=1.8.2
+	local NINJA_FOLDER=$TERMUX_COMMON_CACHEDIR/ninja-$NINJA_VERSION
+	if [ ! -x "$NINJA_FOLDER/ninja" ]; then
+		mkdir -p "$NINJA_FOLDER"
+		local NINJA_ZIP_FILE=$TERMUX_PKG_TMPDIR/ninja-$NINJA_VERSION.zip
+		termux_download https://github.com/ninja-build/ninja/releases/download/v$NINJA_VERSION/ninja-linux.zip \
+			"$NINJA_ZIP_FILE" \
+			d2fea9ff33b3ef353161ed906f260d565ca55b8ca0568fa07b1d2cab90a84a07
+		unzip "$NINJA_ZIP_FILE" -d "$NINJA_FOLDER"
+	fi
+	export PATH=$NINJA_FOLDER:$PATH
+}
+
 # Utility function to setup a current meson build system.
 termux_setup_meson() {
+	termux_setup_ninja
+
 	local MESON_VERSION=0.48.0
 	local MESON_FOLDER=$TERMUX_COMMON_CACHEDIR/meson-$MESON_VERSION-v1
 	if [ ! -d "$MESON_FOLDER" ]; then
@@ -129,6 +174,27 @@ termux_setup_meson() {
 			system = 'android'
 		HERE
 	fi
+}
+
+# Utility function to setup a current cmake build system
+termux_setup_cmake() {
+	local TERMUX_CMAKE_MAJORVESION=3.13
+	local TERMUX_CMAKE_MINORVERSION=2
+	local TERMUX_CMAKE_VERSION=$TERMUX_CMAKE_MAJORVESION.$TERMUX_CMAKE_MINORVERSION
+	local TERMUX_CMAKE_TARNAME=cmake-${TERMUX_CMAKE_VERSION}-Linux-x86_64.tar.gz
+	local TERMUX_CMAKE_TARFILE=$TERMUX_PKG_TMPDIR/$TERMUX_CMAKE_TARNAME
+	local TERMUX_CMAKE_FOLDER=$TERMUX_COMMON_CACHEDIR/cmake-$TERMUX_CMAKE_VERSION
+	if [ ! -d "$TERMUX_CMAKE_FOLDER" ]; then
+		termux_download https://cmake.org/files/v$TERMUX_CMAKE_MAJORVESION/$TERMUX_CMAKE_TARNAME \
+				"$TERMUX_CMAKE_TARFILE" \
+				6370de82999baafc2dbbf0eda23007d93f78d0c3afda8434a646518915ca0846
+		rm -Rf "$TERMUX_PKG_TMPDIR/cmake-${TERMUX_CMAKE_VERSION}-Linux-x86_64"
+		tar xf "$TERMUX_CMAKE_TARFILE" -C "$TERMUX_PKG_TMPDIR"
+		mv "$TERMUX_PKG_TMPDIR/cmake-${TERMUX_CMAKE_VERSION}-Linux-x86_64" \
+			"$TERMUX_CMAKE_FOLDER"
+	fi
+	export PATH=$TERMUX_CMAKE_FOLDER/bin:$PATH
+	export CMAKE_INSTALL_ALWAYS=1
 }
 
 # First step is to handle command-line arguments. Not to be overridden by packages.
@@ -481,15 +547,13 @@ termux_step_setup_toolchain() {
 	export RANLIB=$TERMUX_HOST_PLATFORM-ranlib
 	export READELF=$TERMUX_HOST_PLATFORM-readelf
 	export STRIP=$TERMUX_HOST_PLATFORM-strip
+	export CC_FOR_BUILD=gcc
 
-	if [ $TERMUX_ARCH = i686 ]; then
-		CC_FOR_BUILD="$TERMUX_HOST_PLATFORM-gcc -static"
-	else
-		CC_FOR_BUILD=gcc
-	fi
+	export TERMUX_D8=$ANDROID_HOME/build-tools/$TERMUX_ANDROID_BUILD_TOOLS_VERSION/d8
 
 	export GOOS=linux
-	export CGO_ENABLED=0
+	export CGO_ENABLED=1
+	export GO_LDFLAGS="-linkmode external"
 
 	export CFLAGS="--sysroot=${TERMUX_PREFIX}"
 	export CPPFLAGS="-I${TERMUX_PREFIX}/include"
@@ -678,6 +742,8 @@ termux_step_configure_autotools () {
 }
 
 termux_step_configure_cmake () {
+	termux_setup_cmake
+
 	local BUILD_TYPE=MinSizeRel
 	test -n "$TERMUX_DEBUG" && BUILD_TYPE=Debug
 
@@ -685,9 +751,10 @@ termux_step_configure_cmake () {
 	test $CMAKE_PROC == "arm" && CMAKE_PROC='armv7-a'
 	local MAKE_PROGRAM_PATH
 	if [ $TERMUX_CMAKE_BUILD = Ninja ]; then
-		MAKE_PROGRAM_PATH=`which ninja`
+		termux_setup_ninja
+		MAKE_PROGRAM_PATH=$(which ninja)
 	else
-		MAKE_PROGRAM_PATH=`which make`
+		MAKE_PROGRAM_PATH=$(which make)
 	fi
 
 	# XXX: CMAKE_{AR,RANLIB} needed for at least jsoncpp build to not
