@@ -1,3 +1,8 @@
+## Disabled due to compilation error:
+##
+##  error: redefinition of 'struct ethhdr'
+##
+
 TERMUX_PKG_HOMEPAGE=http://www.dest-unreach.org/socat/
 TERMUX_PKG_DESCRIPTION="Relay for bidirectional data transfer between two independent data channels"
 TERMUX_PKG_VERSION=1.7.3.2
