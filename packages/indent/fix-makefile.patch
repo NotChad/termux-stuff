@@ -1,0 +1,36 @@
+diff -uNr indent-2.2.12/Makefile.in indent-2.2.12.mod/Makefile.in
+--- indent-2.2.12/Makefile.in	2018-09-06 00:00:27.000000000 +0300
++++ indent-2.2.12.mod/Makefile.in	2019-01-13 01:31:11.485656932 +0200
+@@ -378,7 +378,7 @@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+ AUTOMAKE_OPTIONS = no-texinfo.tex
+-SUBDIRS = intl src doc po man regression
++SUBDIRS = intl src po man
+ BUILT_SOURCES = 
+ DISTFILES = $(DIST_COMMON:README=README.md) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ EXTRA_DIST = README.md \
+diff -uNr indent-2.2.12/src/Makefile.am indent-2.2.12.mod/src/Makefile.am
+--- indent-2.2.12/src/Makefile.am	2018-09-05 23:53:43.000000000 +0300
++++ indent-2.2.12.mod/src/Makefile.am	2019-01-13 01:30:39.691733117 +0200
+@@ -17,7 +17,7 @@
+ 
+ MAINTAINERCLEANFILES= Makefile.in libgettext.h
+ 
+-AM_CFLAGS  = -Wall -W -Werror -Wredundant-decls -Wshadow -Wstrict-prototypes
++AM_CFLAGS  = -Wall -W -Wredundant-decls -Wshadow -Wstrict-prototypes
+ AM_CFLAGS += -Wmissing-prototypes -Wnested-externs -Wmissing-declarations
+ AM_CFLAGS += -Wcomment -Wbad-function-cast -Wcast-align
+ 
+diff -uNr indent-2.2.12/src/Makefile.in indent-2.2.12.mod/src/Makefile.in
+--- indent-2.2.12/src/Makefile.in	2018-09-06 00:00:11.000000000 +0300
++++ indent-2.2.12.mod/src/Makefile.in	2019-01-13 01:30:48.315225687 +0200
+@@ -352,7 +352,7 @@
+ BUILT_SOURCES = gperf.c gperf-cc.c
+ AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_srcdir)/intl
+ MAINTAINERCLEANFILES = Makefile.in libgettext.h
+-AM_CFLAGS = -Wall -W -Werror -Wredundant-decls -Wshadow \
++AM_CFLAGS = -Wall -W -Wredundant-decls -Wshadow \
+ 	-Wstrict-prototypes -Wmissing-prototypes -Wnested-externs \
+ 	-Wmissing-declarations -Wcomment -Wbad-function-cast \
+ 	-Wcast-align $(am__append_1)
