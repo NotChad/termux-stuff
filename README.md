@@ -1,6 +1,6 @@
 # Termux:Musl
 
-An experimental build environment for Termux for creating packages linked with [Musl libc](https://www.musl-libc.org/).
+An alternate build environment for Termux for creating packages linked with [Musl libc](https://www.musl-libc.org/).
 
 ## How to
 
@@ -24,12 +24,12 @@ An experimental build environment for Termux for creating packages linked with [
 
 Usually, there no need to rebuild cross-compiler provided with docker image. But if you want to do that, just execute this command from the root of repository:
 ```
-./cross-toolchain/build-toolchain.sh
+./scripts/cross-toolchain/build-toolchain.sh
 ```
 
 By default, cross compiler is built for AArch64. If you need a different architecture, export environment variable `TERMUX_ARCH`. It's value should be a one of: aarch64, arm, i686, x86_64. Example for building ARM cross-compiler:
 ```
-TERMUX_ARCH=arm ./cross-toolchain/build-toolchain.sh
+TERMUX_ARCH=arm ./scripts/cross-toolchain/build-toolchain.sh
 ```
 
 When build finishes, you can find toolchain in /opt/termux directory.
@@ -46,11 +46,6 @@ Where '{package}' should be replaced with actual name of the package (e.g. bash)
 
 It is not possible to know all issues at the one time, but major ones are:
 
-* Build environment: Alpine Linux doesn't support multilib (both 32 and 64 bit packages at the same time). This may cause serious problems with some packages that require hostbuild.
-* Build environment: Golang in Alpine Linux doesn't support CGO.
-* Build environment: Rust-based packages are not supported currently - rustup from https://sh.rustup.rs seems supports only glibc-based systems.
-* Build environment: Meson build system is not supported currently.
-* Build environment: Java-based packages (e.g. termux-am) are not supported currently.
 * Musl libc: shared memory functions may throw error '`Bad system call`'. This is because Android allows only ashmem-based shared memory.
 
 ## Useful links
