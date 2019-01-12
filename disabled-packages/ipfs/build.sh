@@ -1,3 +1,5 @@
+## Disabled due to segfault.
+
 TERMUX_PKG_HOMEPAGE=https://ipfs.io/
 TERMUX_PKG_DESCRIPTION="A peer-to-peer hypermedia distribution protocol"
 TERMUX_PKG_VERSION=0.4.18
