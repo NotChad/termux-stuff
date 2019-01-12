@@ -70,7 +70,7 @@ for target_arch in aarch64 arm i686 x86_64; do
         done
 
         echo -n "[+]     Compiling ${pkg}... "
-        if ./build-package.sh -o ./binary-packages -a "$target_arch" "$pkg" > $build_log 2>&1; then
+        if ./build-package.sh -o ./binary-packages -a "$target_arch" "$pkg" >> $build_log 2>&1; then
             echo "ok"
         else
             echo "fail"
