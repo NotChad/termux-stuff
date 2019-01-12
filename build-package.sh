@@ -10,7 +10,7 @@ termux_error_exit() {
 }
 
 if [ "$(uname -o)" = Android ]; then
-	termux_error_exit "On-device builds are not supported - see README.md"
+	termux_error_exit "On-device builds are not supported."
 fi
 
 # Utility function to download a resource with an expected checksum.
@@ -216,7 +216,7 @@ termux_setup_meson() {
 	echo "cpu_family = '$MESON_CPU_FAMILY'" >> $TERMUX_MESON_CROSSFILE
 	echo "cpu = '$MESON_CPU'" >> $TERMUX_MESON_CROSSFILE
 	echo "endian = 'little'" >> $TERMUX_MESON_CROSSFILE
-	echo "system = 'android'" >> $TERMUX_MESON_CROSSFILE
+	echo "system = 'linux'" >> $TERMUX_MESON_CROSSFILE
 }
 
 # Utility function to setup a current cmake build system
@@ -575,7 +575,7 @@ termux_step_host_build() {
 	make -j "$TERMUX_MAKE_PROCESSES"
 }
 
-# Setup a standalone Android NDK toolchain. Not to be overridden by packages.
+# Setup environment so we will use our toolchains. Not to be overridden by packages.
 termux_step_setup_toolchain() {
 	# We put this after system PATH to avoid picking up toolchain stripped python
 	export PATH=$PATH:$TERMUX_STANDALONE_TOOLCHAIN/bin
