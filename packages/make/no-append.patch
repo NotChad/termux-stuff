@@ -1,0 +1,12 @@
+diff -uNr make-4.2.1/output.c make-4.2.1.mod/output.c
+--- make-4.2.1/output.c	2016-05-21 23:22:32.000000000 +0300
++++ make-4.2.1.mod/output.c	2019-01-13 00:33:47.638057569 +0200
+@@ -157,6 +157,8 @@
+ static void
+ set_append_mode (int fd)
+ {
++  /* On Android, SELinux has a deny rule for append on stderr (eg. SCM_RIGHTS returns MSG_CTRUNC) */
++  if (isatty(fd)) return;
+ #if defined(F_GETFL) && defined(F_SETFL) && defined(O_APPEND)
+   int flags = fcntl (fd, F_GETFL, 0);
+   if (flags >= 0)
