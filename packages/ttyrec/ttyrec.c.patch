@@ -1,6 +1,6 @@
 diff -uNr ttyrec-1.0.8/ttyrec.c ttyrec-1.0.8.mod/ttyrec.c
 --- ttyrec-1.0.8/ttyrec.c	2006-06-11 18:52:50.000000000 +0300
-+++ ttyrec-1.0.8.mod/ttyrec.c	2019-01-13 14:36:53.939372578 +0200
++++ ttyrec-1.0.8.mod/ttyrec.c	2019-01-13 14:46:26.548187178 +0200
 @@ -55,8 +55,9 @@
  #include <string.h>
  #include <stdlib.h>
@@ -12,7 +12,30 @@ diff -uNr ttyrec-1.0.8/ttyrec.c ttyrec-1.0.8.mod/ttyrec.c
  #include <stropts.h>
  #endif /* SVR4 */
  
-@@ -156,7 +157,7 @@
+@@ -70,9 +71,7 @@
+ 
+ #define _(FOO) FOO
+ 
+-#ifdef HAVE_openpty
+-#include <libutil.h>
+-#endif
++#include <pty.h>
+ 
+ #if defined(SVR4) && !defined(CDEL)
+ #if defined(_POSIX_VDISABLE)
+@@ -105,11 +104,6 @@
+ struct	winsize win;
+ int	lb;
+ int	l;
+-#if !defined(SVR4)
+-#ifndef HAVE_openpty
+-char	line[] = "/dev/ptyXX";
+-#endif
+-#endif /* !SVR4 */
+ int	aflg;
+ int	uflg;
+ 
+@@ -156,7 +150,7 @@
  
  	shell = getenv("SHELL");
  	if (shell == NULL)
@@ -21,7 +44,17 @@ diff -uNr ttyrec-1.0.8/ttyrec.c ttyrec-1.0.8.mod/ttyrec.c
  
  	getmaster();
  	fixtty();
-@@ -203,11 +204,7 @@
+@@ -190,9 +184,7 @@
+ 	char ibuf[BUFSIZ];
+ 
+ 	(void) fclose(fscript);
+-#ifdef HAVE_openpty
+ 	(void) close(slave);
+-#endif
+ 	while ((cc = read(0, ibuf, BUFSIZ)) > 0)
+ 		(void) write(master, ibuf, cc);
+ 	done();
+@@ -203,11 +195,7 @@
  void
  finish()
  {
@@ -33,3 +66,85 @@ diff -uNr ttyrec-1.0.8/ttyrec.c ttyrec-1.0.8.mod/ttyrec.c
  	register int pid;
  	register int die = 0;
  
+@@ -284,9 +272,7 @@
+ 
+ 	setbuf(stdout, NULL);
+ 	(void) close(0);
+-#ifdef HAVE_openpty
+ 	(void) close(slave);
+-#endif
+ 	for (;;) {
+ 		Header h;
+ 
+@@ -387,54 +373,12 @@
+ 		fail();
+ 	}
+ #else /* !SVR4 */
+-#ifdef HAVE_openpty
+ 	(void) tcgetattr(0, &tt);
+ 	(void) ioctl(0, TIOCGWINSZ, (char *)&win);
+ 	if (openpty(&master, &slave, NULL, &tt, &win) < 0) {
+ 		fprintf(stderr, _("openpty failed\n"));
+ 		fail();
+ 	}
+-#else
+-#ifdef HAVE_getpt
+-	if ((master = getpt()) < 0) {
+-		perror("getpt()");
+-		fail();
+-	}
+-#else
+-	char *pty, *bank, *cp;
+-	struct stat stb;
+-
+-	pty = &line[strlen("/dev/ptyp")];
+-	for (bank = "pqrs"; *bank; bank++) {
+-		line[strlen("/dev/pty")] = *bank;
+-		*pty = '0';
+-		if (stat(line, &stb) < 0)
+-			break;
+-		for (cp = "0123456789abcdef"; *cp; cp++) {
+-			*pty = *cp;
+-			master = open(line, O_RDWR);
+-			if (master >= 0) {
+-				char *tp = &line[strlen("/dev/")];
+-				int ok;
+-
+-				/* verify slave side is usable */
+-				*tp = 't';
+-				ok = access(line, R_OK|W_OK) == 0;
+-				*tp = 'p';
+-				if (ok) {
+-					(void) tcgetattr(0, &tt);
+-				    	(void) ioctl(0, TIOCGWINSZ, 
+-						(char *)&win);
+-					return;
+-				}
+-				(void) close(master);
+-			}
+-		}
+-	}
+-	fprintf(stderr, _("Out of pty's\n"));
+-	fail();
+-#endif /* not HAVE_getpt */
+-#endif /* not HAVE_openpty */
+ #endif /* !SVR4 */
+ }
+ 
+@@ -467,16 +411,6 @@
+ 		(void) ioctl(0, TIOCGWINSZ, (char *)&win);
+ 	}
+ #else /* !SVR4 */
+-#ifndef HAVE_openpty
+-	line[strlen("/dev/")] = 't';
+-	slave = open(line, O_RDWR);
+-	if (slave < 0) {
+-		perror(line);
+-		fail();
+-	}
+-	(void) tcsetattr(slave, TCSAFLUSH, &tt);
+-	(void) ioctl(slave, TIOCSWINSZ, (char *)&win);
+-#endif
+ 	(void) setsid();
+ 	(void) ioctl(slave, TIOCSCTTY, 0);
+ #endif /* SVR4 */
