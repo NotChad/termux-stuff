@@ -70,7 +70,7 @@ tasks:
   - install-android-sdk: |
       curl --silent --fail --retry 3 -L -o sdk.zip https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip
       unzip -q sdk.zip -d /opt/termux/android-sdk && rm -f sdk.zip
-      bash ./termux-musl/scripts/setup-sdk.sh
+      bash ./termux-musl/scripts/setup-sdk.sh > /dev/null
   - process-last-commit: |
       cd termux-musl
       bash ./scripts/ci-process-last-commit.sh
