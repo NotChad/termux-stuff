@@ -43,8 +43,8 @@ if [ -f "${TERMUX_CONFIG}" ]; then
 fi
 
 : "${TERMUX_ARCH:="aarch64"}"
-: "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
-: "${TERMUX_HOME:="/data/data/com.termux/files/home"}"
+: "${TERMUX_PREFIX:="/data/data/com.termux.musl/files/usr"}"
+: "${TERMUX_HOME:="/data/data/com.termux.musl/files/home"}"
 : "${TOOLCHAIN_BASE_DIR:="/opt/termux"}"
 : "${TOOLCHAIN_BUILD_MAKE_JOBS:="$(nproc)"}"
 
