@@ -1,0 +1,18 @@
+diff -uNr angband-4.1.3/src/z-file.c angband-4.1.3.mod/src/z-file.c
+--- angband-4.1.3/src/z-file.c	2018-07-22 07:49:08.000000000 +0300
++++ angband-4.1.3.mod/src/z-file.c	2019-01-13 03:26:32.750163716 +0200
+@@ -147,8 +147,13 @@
+ 		pw = username[0] ? getpwnam(username) : getpwuid(getuid());
+ 		if (!pw) return;
+ 
++		char *homedir = getenv("HOME");
++		if (!homedir) {
++			homedir = "@TERMUX_HOME@";
++		}
++
+ 		/* Copy across */
+-		strnfcat(buf, len, cur_len, "%s%s", pw->pw_dir, PATH_SEP);
++		strnfcat(buf, len, cur_len, "%s%s", homedir, PATH_SEP);
+ 		if (s) strnfcat(buf, len, cur_len, "%s", s);
+ 	} else
+ 

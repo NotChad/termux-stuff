@@ -1,6 +1,7 @@
 TERMUX_PKG_HOMEPAGE=http://rephial.org/
 TERMUX_PKG_DESCRIPTION="Dungeon exploration adventure game"
 TERMUX_PKG_VERSION=4.1.3
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=http://rephial.org/downloads/4.1/angband-$TERMUX_PKG_VERSION.tar.gz
 TERMUX_PKG_SHA256=9402c4f8da691edbd4567a948c5663e1066bee3fcb4a62fbcf86b5454918406f
 TERMUX_PKG_DEPENDS="musl, ncurses"
