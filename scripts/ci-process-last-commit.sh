@@ -9,7 +9,7 @@ cd "$REPO_DIR" || {
 }
 
 ## Check for updated files and determine if they are part of packages.
-UPDATED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | grep packages/)
+UPDATED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | grep -P "packages/(core|optional|x11)")
 if [ -z "$UPDATED_FILES" ]; then
     echo "[*] No packages changed."
     echo "[*] Finishing with status 'OK'."
@@ -17,7 +17,7 @@ if [ -z "$UPDATED_FILES" ]; then
 fi
 
 ## Determine package directories.
-PACKAGE_DIRS=$(echo "$UPDATED_FILES" | grep -oP "packages/[a-z0-9+.-]+" | sort | uniq)
+PACKAGE_DIRS=$(echo "$UPDATED_FILES" | grep -oP "packages/(core|optional|x11)/[a-z0-9+.-]+" | sort | uniq)
 if [ -z "$PACKAGE_DIRS" ]; then
     echo "[!] Failed to determine updated packages."
     echo "    Perhaps, script failed ?"
@@ -32,7 +32,7 @@ for dir in $PACKAGE_DIRS; do
 done
 
 ## Determine package names.
-PACKAGE_NAMES=$(echo "$PACKAGE_DIRS" | xargs -n 1 basename)
+PACKAGE_NAMES=$(echo "$PACKAGE_DIRS" | sed 's/packages\///g')
 if [ -z "$PACKAGE_NAMES" ]; then
     echo "[!] Failed to determine package names."
     echo "    Perhaps, script failed ?"
@@ -47,20 +47,20 @@ fi
 
 ## Build packages for each architecture.
 for target_arch in aarch64 arm i686 x86_64; do
-    echo "[*] Building packages for architecture '$target_arch':"
+    echo "[=] Building packages for architecture '$target_arch':"
     build_log="./binary-packages/build-${target_arch}.log"
 
     for pkg in $PACKAGE_NAMES; do
         echo "[+]   Processing ${pkg}:"
 
-        for dep_pkg in $(./scripts/buildorder.py "./packages/$pkg" | xargs -r -n 1 basename); do
+        for dep_pkg in $(./scripts/buildorder.py "./packages/$pkg" | sed "s@$REPO_DIR/packages/@@g"); do
             echo -n "[+]     Compiling dependency ${dep_pkg}... "
-            if ./build-package.sh -o ./binary-packages -a "$target_arch" "$dep_pkg" >> $build_log 2>&1; then
+            if ./build-package.sh -o ./binary-packages -a "$target_arch" -s "$(basename "$dep_pkg")" >> $build_log 2>&1; then
                 echo "ok"
             else
                 echo "fail"
-                echo "[*] Uploading log file..."
-                log_name="build-${pkg}-${target_arch}-$(date +%d.%m.%Y-%H.%M).log"
+                echo "[=] Uploading log file..."
+                log_name="build-$(basename "$pkg")-${target_arch}-$(date +%d.%m.%Y-%H.%M).log"
                 log_url=$(curl --silent --upload-file "$build_log" "https://transfer.sh/$log_name")
                 echo
                 echo "    Log: $log_url"
@@ -70,23 +70,25 @@ for target_arch in aarch64 arm i686 x86_64; do
         done
 
         echo -n "[+]     Compiling ${pkg}... "
-        if ./build-package.sh -o ./binary-packages -a "$target_arch" "$pkg" >> $build_log 2>&1; then
+        if ./build-package.sh -o ./binary-packages -a "$target_arch" "$(basename "$pkg")" >> $build_log 2>&1; then
             echo "ok"
         else
             echo "fail"
-            echo "[*] Uploading log file..."
-            log_name="build-${pkg}-${target_arch}-$(date +%d.%m.%Y-%H.%M).log"
+            echo "[=] Uploading log file..."
+            log_name="build-$(basename "$pkg")-${target_arch}-$(date +%d.%m.%Y-%H.%M).log"
             log_url=$(curl --silent --upload-file "$build_log" "https://transfer.sh/$log_name")
             echo
             echo "    Log: $log_url"
             echo
             exit 1
         fi
+
+        echo "[+]   Successfully built ${pkg}."
     done
 done
 
 ## Create archive with packages and logs.
-echo -n "[*] Archiving packages and logs... "
+echo -n "[=] Archiving packages and logs... "
 archive_name="build-$(date +%d.%m.%Y-%H.%M).tar.gz"
 if tar zcf "$archive_name" binary-packages > /dev/null 2>&1; then
     echo "ok"
@@ -96,9 +98,9 @@ else
 fi
 
 ## Upload archive.
-echo "[*] Uploading..."
+echo "[=] Uploading..."
 archive_url=$(curl --silent --upload-file "$archive_name" "https://transfer.sh/$archive_name")
 echo
 echo "    Build result: $archive_url"
 echo
-echo "[*] Finished successfully."
+echo "[=] Finished successfully."

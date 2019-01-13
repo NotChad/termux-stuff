@@ -218,25 +218,30 @@ def generate_target_buildorder(target_path, pkgs_map):
 
 def main():
     "Generate the build order either for all packages or a specific one."
-    packages_directories = ['packages']
+    packages_directories = set()
+
+    script_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    termux_repo_dir = os.path.realpath(os.path.dirname(script_dir))
+
+    for pkg_dir in [ 'packages/core', 'packages/optional', 'packages/x11' ]:
+        pkg_dir = os.path.join(termux_repo_dir, pkg_dir)
+        if os.path.exists(pkg_dir):
+            packages_directories.add(pkg_dir)
+
     full_buildorder = len(sys.argv) == 1
+
     if not full_buildorder:
-        packages_real_path = os.path.realpath('packages')
-        for path in sys.argv[1:]:
-            if not os.path.isdir(path):
-                die('Not a directory: ' + path)
-            if path.endswith('/'):
-                path = path[:-1]
-            parent_path = os.path.dirname(path)
-            if packages_real_path != os.path.realpath(parent_path):
-                packages_directories.append(parent_path)
-
-    pkgs_map = read_packages_from_directories(packages_directories)
-
-    if full_buildorder:
-        build_order = generate_full_buildorder(pkgs_map)
+        package_path = os.path.realpath(sys.argv[1])
+        if not os.path.isdir(package_path):
+            die('Not a directory: ' + package_path)
+        if package_path.endswith('/'):
+            path = path[:-1]
+        packages_directories.add(os.path.dirname(package_path))
+        pkgs_map = read_packages_from_directories(packages_directories)
+        build_order = generate_target_buildorder(package_path, pkgs_map)
     else:
-        build_order = generate_target_buildorder(sys.argv[1], pkgs_map)
+        pkgs_map = read_packages_from_directories(packages_directories)
+        build_order = generate_full_buildorder(pkgs_map)
 
     for pkg in build_order:
         print(pkg.dir)

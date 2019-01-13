@@ -293,9 +293,36 @@ termux_step_handle_arguments() {
 	else
 		# Package name:
 		if [ -n "${TERMUX_IS_DISABLED=""}" ]; then
-			export TERMUX_PKG_BUILDER_DIR=$TERMUX_SCRIPTDIR/disabled-packages/$TERMUX_PKG_NAME
+			export TERMUX_PKG_BUILDER_DIR=$TERMUX_SCRIPTDIR/packages/disabled/$TERMUX_PKG_NAME
 		else
-			export TERMUX_PKG_BUILDER_DIR=$TERMUX_SCRIPTDIR/packages/$TERMUX_PKG_NAME
+			local _pkg_found_in=""
+			if [ -e "$TERMUX_SCRIPTDIR/packages/core/$TERMUX_PKG_NAME" ]; then
+				export TERMUX_PKG_BUILDER_DIR=$TERMUX_SCRIPTDIR/packages/core/$TERMUX_PKG_NAME
+				_pkg_found_in="core"
+			fi
+
+			if [ -e "$TERMUX_SCRIPTDIR/packages/optional/$TERMUX_PKG_NAME" ]; then
+				if [ -n "${_pkg_found_in}" ]; then
+					termux_error_exit "Duplicated packages: ${_pkg_found_in}/$TERMUX_PKG_NAME and optional/$TERMUX_PKG_NAME."
+				else
+					_pkg_found_in="optional"
+				fi
+				export TERMUX_PKG_BUILDER_DIR=$TERMUX_SCRIPTDIR/packages/optional/$TERMUX_PKG_NAME
+			fi
+
+			if [ -e "$TERMUX_SCRIPTDIR/packages/x11/$TERMUX_PKG_NAME" ]; then
+				if [ -n "${_pkg_found_in}" ]; then
+					termux_error_exit "Duplicated packages: ${_pkg_found_in}/$TERMUX_PKG_NAME and x11/$TERMUX_PKG_NAME."
+				else
+					_pkg_found_in="x11"
+				fi
+				export TERMUX_PKG_BUILDER_DIR=$TERMUX_SCRIPTDIR/packages/x11/$TERMUX_PKG_NAME
+			fi
+
+			if [ -z "${_pkg_found_in}" ]; then
+				termux_error_exit "Package $TERMUX_PKG_NAME is not exist."
+			fi
+			unset _pkg_found_in
 		fi
 	fi
 	TERMUX_PKG_BUILDER_SCRIPT=$TERMUX_PKG_BUILDER_DIR/build.sh
@@ -431,12 +458,20 @@ termux_step_start_build() {
 	fi
 
 	if [ -z "${TERMUX_SKIP_DEPCHECK:=""}" ]; then
-		local p TERMUX_ALL_DEPS
+		local pkg pkg_name TERMUX_ALL_DEPS
 		TERMUX_ALL_DEPS=$(./scripts/buildorder.py "$TERMUX_PKG_BUILDER_DIR")
-		for p in $TERMUX_ALL_DEPS; do
-			echo "Building dependency $p if necessary..."
+		for pkg in $TERMUX_ALL_DEPS; do
+			case "$(basename "$(dirname "$pkg")")" in
+				core|disabled|optional|x11)
+					pkg_name="$(basename "$(dirname "$pkg")")/$(basename "$pkg")"
+					;;
+				*)
+					pkg_name="custom/$(basename "$pkg")"
+					;;
+			esac
+			echo "Building dependency '$pkg_name' if necessary..."
 			# Built dependencies are put in the default TERMUX_DEBDIR instead of the specified one
-			./build-package.sh -a $TERMUX_ARCH -s "$p"
+			./build-package.sh -a $TERMUX_ARCH -s "$pkg"
 		done
 	fi
 
@@ -492,7 +527,16 @@ termux_step_start_build() {
 		TERMUX_PKG_BUILDDIR=$TERMUX_PKG_SRCDIR
 	fi
 
-	echo "termux - building $TERMUX_PKG_NAME for arch $TERMUX_ARCH..."
+	pkg_cat_name=$(basename "$(dirname "$TERMUX_PKG_BUILDER_DIR")")
+	case "$pkg_cat_name" in
+		core|disabled|optional|x11)
+			echo "termux - building '$pkg_cat_name/$TERMUX_PKG_NAME' for arch $TERMUX_ARCH..."
+			;;
+		*)
+			echo "termux - building 'custom/$TERMUX_PKG_NAME' for arch $TERMUX_ARCH..."
+			;;
+	esac
+	unset pkg_cat_name
 	test -t 1 && printf "\033]0;%s...\007" "$TERMUX_PKG_NAME"
 
 	# Keep track of when build started so we can see what files have been created.
@@ -1128,7 +1172,17 @@ termux_step_create_debfile() {
 
 # Finish the build. Not to be overridden by package scripts.
 termux_step_finish_build() {
-	echo "termux - build of '$TERMUX_PKG_NAME' done"
+	pkg_cat_name=$(basename "$(dirname "$TERMUX_PKG_BUILDER_DIR")")
+	case "$pkg_cat_name" in
+		core|disabled|optional|x11)
+			echo "termux - build of '$pkg_cat_name/$TERMUX_PKG_NAME' done"
+			;;
+		*)
+			echo "termux - build of 'custom/$TERMUX_PKG_NAME' done"
+			;;
+	esac
+	unset pkg_cat_name
+
 	test -t 1 && printf "\033]0;%s - DONE\007" "$TERMUX_PKG_NAME"
 	mkdir -p /data/data/.built-packages
 	echo "$TERMUX_PKG_FULLVERSION" > "/data/data/.built-packages/$TERMUX_PKG_NAME"
