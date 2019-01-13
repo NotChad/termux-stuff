@@ -1,6 +1,6 @@
 TERMUX_PKG_HOMEPAGE=http://gcc.gnu.org
 TERMUX_PKG_DESCRIPTION="The GNU C compiler runtime library"
-TERMUX_PKG_VERSION=6.4.0
+TERMUX_PKG_VERSION=8.2.0
 TERMUX_PKG_DEPENDS="musl"
 
 termux_step_make_install() {
