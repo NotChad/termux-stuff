@@ -104,14 +104,17 @@ final class TermuxInstaller {
                                     String oldPath = parts[0];
                                     String newPath = STAGING_PREFIX_PATH + "/" + parts[1];
                                     symlinks.add(Pair.create(oldPath, newPath));
+
+                                    ensureDirectoryExists(new File(newPath).getParentFile());
                                 }
                             } else {
                                 String zipEntryName = zipEntry.getName();
                                 File targetFile = new File(STAGING_PREFIX_PATH, zipEntryName);
-                                if (zipEntry.isDirectory()) {
-                                    if (!targetFile.mkdirs())
-                                        throw new RuntimeException("Failed to create directory: " + targetFile.getAbsolutePath());
-                                } else {
+
+                                boolean isDirectory = zipEntry.isDirectory();
+                                ensureDirectoryExists(isDirectory ? targetFile : targetFile.getParentFile());
+
+                                if (!isDirectory) {
                                     try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
                                         int readBytes;
                                         while ((readBytes = zipInput.read(buffer)) != -1)
@@ -188,6 +191,12 @@ final class TermuxInstaller {
                 }
             }
         }.start();
+    }
+
+    private static void ensureDirectoryExists(File directory) {
+        if (!directory.isDirectory() && !directory.mkdirs()) {
+            throw new RuntimeException("Unable to create directory: " + directory.getAbsolutePath());
+        }
     }
 
     /** Get bootstrap zip url for this systems cpu architecture. */
