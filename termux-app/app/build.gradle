@@ -13,8 +13,8 @@ android {
         applicationId "com.termux.musl"
         minSdkVersion 21
         targetSdkVersion 27
-        versionCode 67
-        versionName "1.02-musl_libc"
+        versionCode 68
+        versionName "1.03-musl_libc"
     }
 
     buildTypes {
