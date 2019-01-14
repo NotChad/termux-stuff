@@ -78,7 +78,7 @@ impl DebVisitor for CreateBootstrapVisitor {
 
             let pp = file.path().unwrap();
             let file_path = pp.to_str().unwrap();
-            let relative_path = &file_path[33..];
+            let relative_path = &file_path[38..];
             file_path_full = String::from(&file_path[2..]);
 
             if is_symlink {
@@ -120,39 +120,29 @@ pub fn create(output: &str) {
     let path = PathBuf::from(output);
 
     let bootstrap_packages = [
-        // Having bash as shell:
+        "apt",
         "bash",
-        "readline",
-        "ncurses",
-        "command-not-found",
-        "termux-tools",
-        // Needed for bin/sh:
-        "dash",
-        // For use by dpkg and apt:
-        "liblzma",
-        // Needed by dpkg:
-        "libandroid-support",
-        // dpkg uses tar (and wants 'find' in path for some operations):
         "busybox",
-        // apt uses STL:
-        "libc++",
-        // apt now includes apt-transport-https:
         "ca-certificates",
-        "openssl",
-        "libnghttp2",
-        "libcurl",
-        // gnupg for package verification:
+        "dash",
+        "dpkg",
         "gpgv",
+        "libbz2",
+        "libcurl",
+        "libgcc",
         "libgcrypt",
         "libgpg-error",
-        "libbz2",
-        // termux-exec fixes shebangs (and apt depends on it):
-        "termux-exec",
-        // Everyone needs a working "am" (and termux-tools depends on it):
+        "liblzma",
+        "libnghttp2",
+        "libstdc++",
+        "musl",
+        "ncurses",
+        "openssl",
+        "readline",
         "termux-am",
-        // For package management:
-        "dpkg",
-        "apt",
+        "termux-exec",
+        "termux-tools",
+        "zlib",
     ];
 
     let arch_all_packages = fetch_repo("all");
@@ -160,13 +150,13 @@ pub fn create(output: &str) {
 
     let mut join_handles = Vec::new();
 
-    for arch in &["arm", "aarch64", "i686", "x86_64"] {
+    for arch in &["aarch64", "arm", "i686", "x86_64"] {
         let my_arch_all_packages = Arc::clone(&arch_all_packages);
         let my_path = path.clone();
         join_handles.push(thread::spawn(move || {
             let http_client = reqwest::Client::new();
 
-            let output_zip_path = my_path.join(format!("bootstrap-{}.zip", arch));
+            let output_zip_path = my_path.join(format!("bootstrap-musl-{}.zip", arch));
             let output_zip_file = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -185,6 +175,7 @@ pub fn create(output: &str) {
 
             // The app needs directories to appear before files.
             for dir in vec![
+                "bin/applets/",
                 "etc/apt/preferences.d/",
                 "etc/apt/apt.conf.d/",
                 "var/cache/apt/archives/partial/",
@@ -215,6 +206,8 @@ pub fn create(output: &str) {
                     .unwrap_or_else(|| panic!("Cannot find package '{}'", bootstrap_package_name));
 
                 let package_url = bootstrap_package.package_url();
+
+                println!("{}", package_url);
 
                 let mut response = http_client
                     .get(&package_url)
