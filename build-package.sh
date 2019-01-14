@@ -634,7 +634,12 @@ termux_step_setup_toolchain() {
 	export RANLIB=$TERMUX_HOST_PLATFORM-ranlib
 	export READELF=$TERMUX_HOST_PLATFORM-readelf
 	export STRIP=$TERMUX_HOST_PLATFORM-strip
-	export CC_FOR_BUILD=gcc
+
+	if [ "$TERMUX_ARCH" = "i686" ]; then
+		export CC_FOR_BUILD="$TERMUX_HOST_PLATFORM-gcc -static"
+	else
+		export CC_FOR_BUILD=gcc
+	fi
 
 	export TERMUX_D8=$ANDROID_HOME/build-tools/$TERMUX_ANDROID_BUILD_TOOLS_VERSION/d8
 
