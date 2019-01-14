@@ -73,10 +73,4 @@ termux_step_post_make_install () {
 			"$TERMUX_PKG_BUILDER_DIR/scripts/$script" > "$TERMUX_PREFIX/etc/$script"
 	done
 	unset script
-
-	sed \
-		-e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|" \
-		-e "s|@TERMUX_HOME@|$TERMUX_HOME|" \
-		"$TERMUX_PKG_BUILDER_DIR"/scripts/login > "$TERMUX_PREFIX"/bin/login
-	chmod 700 "$TERMUX_PREFIX"/bin/login
 }
