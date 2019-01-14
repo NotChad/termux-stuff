@@ -23,13 +23,16 @@ if [ -z "$PACKAGE_DIRS" ]; then
     echo "    Perhaps, script failed ?"
     exit 1
 fi
+
+## Filter directories to include only ones that actually exist.
+existing_dirs=""
 for dir in $PACKAGE_DIRS; do
-    if [ ! -d "$REPO_DIR/$dir" ]; then
-        echo "[!] Nonexistent package directory '$dir'."
-        echo "    Perhaps, script failed ?"
-        exit 1
+    if [ -d "$REPO_DIR/$dir" ]; then
+        existing_dirs+=" ${dir}"
     fi
 done
+PACKAGE_DIRS="$existing_dirs"
+unset dir existing_dirs
 
 ## Determine package names.
 PACKAGE_NAMES=$(echo "$PACKAGE_DIRS" | sed 's/packages\///g')
