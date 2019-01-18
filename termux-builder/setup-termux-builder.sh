@@ -6,7 +6,7 @@ HOME="/data/data/com.termux/files/home"
 TMPDIR="${PREFIX}/tmp"
 export HOME TMPDIR
 
-TERMUX_BUILDER_ROOTFS_URL="https://github.com/xeffyr/termux-builder/releases/download/v1.0/termux-builder-rootfs.tar.gz"
+TERMUX_BUILDER_ROOTFS_URL="https://github.com/xeffyr/termux-stuff/releases/download/base/termux-builder-rootfs.tar.gz"
 TERMUX_BUILDER_ROOTFS_FILE="${TMPDIR}/termux-builder-rootfs.tar.gz"
 TERMUX_BUILDER_ROOTFS_SHA256="748cbecea10b1376022c4eada81417b0dc6ae98a68cf13a3d18c708e5494b76e"
 TERMUX_BUILDER_ROOTFS_DIR="${HOME}/.termux-builder"
