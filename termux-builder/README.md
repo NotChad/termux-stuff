@@ -13,12 +13,12 @@ To install Termux Builder, follow these steps:
 
 1. Clone repository:
 ```
-git clone https://github.com/xeffyr/termux-builder
+git clone https://github.com/xeffyr/termux-stuff
 ```
 
 2. Run setup script:
 ```
-cd termux-builder
+cd termux-stuff/termux-builder
 bash setup-termux-builder.sh
 ```
 
