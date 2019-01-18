@@ -1,7 +1,5 @@
 # Termux:Musl
 
-[![builds.sr.ht status](https://builds.sr.ht/~xeffyr/termux-musl.svg)](https://builds.sr.ht/~xeffyr/termux-musl?)
-
 An alternate build environment for Termux for creating packages linked with [Musl libc](https://www.musl-libc.org/).
 
 ## How to
