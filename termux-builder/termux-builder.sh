@@ -19,6 +19,11 @@ if [ ! -e "${TERMUX_BUILDER_ROOTFS_DIR}/.l2s" ]; then
     fi
 fi
 
+if ! echo "nameserver 8.8.8.8" > "${TERMUX_BUILDER_ROOTFS_DIR}/etc/resolv.conf"; then
+    echo "[!] Failed to update /etc/resolv.conf."
+    exit 1
+fi
+
 exec proot \
         -0 \
         -b "${HOME}:${HOME}" \
