@@ -24,9 +24,10 @@ if ! echo "nameserver 8.8.8.8" > "${TERMUX_BUILDER_ROOTFS_DIR}/etc/resolv.conf";
     exit 1
 fi
 
+cd / > /dev/null 2>&1 || true
 exec proot \
         -0 \
-        -b "${HOME}:${HOME}" \
+        -b "${HOME}:/home/termux" \
         -b "/dev:/dev" \
         -b "/proc:/proc" \
         -b "/sys:/sys" \
