@@ -35,7 +35,7 @@ post_package() {
 }
 ```
 
-More examples you can find in [./packages](./packages) directory of this repository. You can also use
+More examples you can find in [./samples](./samples) directory of this repository. You can also use
 command `makepkg --new package-name` to create a new pakage with dummy manifest file which is properly
 documented.
 
@@ -46,6 +46,6 @@ in process:
 
 ## How to install
 
-Just download script [termux-makepkg](https://github.com/xeffyr/termux-makepkg/blob/master/termux-makepkg)
+Just download script [termux-makepkg](https://raw.githubusercontent.com/xeffyr/termux-stuff/master/termux-makepkg/termux-makepkg)
 and put it to `${PREFIX}/bin/makepkg` then do `chmod 700 ${PREFIX}/bin/makepkg`. Tool will automatically
 install needed dependencies (such as coreutils or clang) on first run.

@@ -1,0 +1,48 @@
+#!/bin/sh
+PACKAGE_MAINTAINER="Leonid Plyushch <leonid.plyushch@gmail.com> @xeffyr"
+
+##
+## SAMPLE MANIFEST
+##
+##  * Standalone C source files.
+##  * Custom build steps.
+##  * Custom packaging step.
+##
+
+PACKAGE_NAME="command-not-found"
+PACKAGE_DESCRIPTION="Suggest installation of packages in interactive shell sessions"
+PACKAGE_HOMEPAGE="https://termux.com"
+PACKAGE_VERSION="1.33"
+
+PACKAGE_SOURCES=("command-not-found.c"
+                 "commands.h")
+
+PACKAGE_SOURCES_SHA256=('97f96e4ae726fff3baa061244333a90cbab7ae4eedcc9d3f3f7b9ddbdc9b617e'
+                        '5f8be24c0928513201d21fb44900b1d89e1d5e8c4cfe39808bc2d5486d501128')
+
+prepare() {
+    PACKAGE_SOURCE_DIR="${PACKAGE_BUILD_DIR}"
+}
+
+build() {
+    cd "${PACKAGE_BUILD_DIR}"
+
+    "${CC}" \
+        -Wall \
+        -Wextra \
+        -Werror \
+        -pedantic \
+        ${CFLAGS} \
+        ${LDFLAGS} \
+        -std=c11 \
+        "${PACKAGE_MANIFEST_DIR}/command-not-found.c" \
+        -o ./command-not-found
+}
+
+package() {
+    cd "${PACKAGE_BUILD_DIR}"
+    install \
+        -Dm700 \
+        ./command-not-found \
+        "${PACKAGE_INSTALL_DIR}/${TERMUX_PREFIX}/libexec/termux/command-not-found"
+}
