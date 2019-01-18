@@ -1,0 +1,12 @@
+#!/bin/sh
+PACKAGE_MAINTAINER="Leonid Plyushch <leonid.plyushch@gmail.com> @xeffyr"
+
+PACKAGE_NAME="swig"
+PACKAGE_DESCRIPTION="Generate scripting interfaces to C/C++ code"
+PACKAGE_HOMEPAGE="http://www.swig.org/"
+PACKAGE_VERSION="3.0.12"
+PACKAGE_DEPENDS="pcre"
+PACKAGE_BUILD_DEPENDS="pcre-dev"
+
+PACKAGE_SOURCES=("http://downloads.sourceforge.net/swig/swig-${PACKAGE_VERSION}.tar.gz")
+PACKAGE_SOURCES_SHA256=('7cf9f447ae7ed1c51722efc45e7f14418d15d7a1e143ac9f09a668999f4fc94d')

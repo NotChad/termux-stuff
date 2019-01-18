@@ -1,0 +1,84 @@
+#!/bin/sh
+PACKAGE_MAINTAINER="Leonid Plyushch <leonid.plyushch@gmail.com> @xeffyr"
+
+PACKAGE_NAME="bash5"
+PACKAGE_DESCRIPTION="A sh-compatible shell that incorporates useful features from the Korn shell (ksh) and C shell (csh)"
+PACKAGE_HOMEPAGE="https://www.gnu.org/software/bash/"
+
+##
+## !!! This is a beta version of Bash. Use with caution. !!!
+##
+
+PACKAGE_VERSION="5.0-beta2"
+PACKAGE_REVISION="0"
+PACKAGE_DEPENDS="command-not-found, libandroid-support, ncurses, termux-tools"
+PACKAGE_BUILD_DEPENDS="libandroid-support-dev, ncurses-dev"
+PACKAGE_CONFLICTS="bash"
+PACKAGE_REPLACES="bash"
+PACKAGE_PROVIDES="bash"
+
+PACKAGE_EXTRA_CONFIGURE_ARGS="
+--enable-multibyte
+--without-bash-malloc
+ac_cv_header_grp_h=no
+bash_cv_job_control_missing=present
+bash_cv_sys_siglist=yes
+bash_cv_func_sigsetjmp=present
+bash_cv_unusable_rtsigs=no
+ac_cv_func_mbsnrtowcs=no
+"
+
+# Use bash_cv_dev_fd=whacky to use /proc/self/fd instead of /dev/fd.
+# After making this change process substitution such as in 'cat <(ls)' works.
+PACKAGE_EXTRA_CONFIGURE_ARGS+=" bash_cv_dev_fd=whacky"
+
+# Bash assumes that getcwd is broken and provides a wrapper which
+# does not work when not all parent directories up to root are
+# accessible, which they are not under Android (/data). See
+# - http://permalink.gmane.org/gmane.linux.embedded.yocto.general/25204
+# - https://github.com/termux/termux-app/issues/200
+PACKAGE_EXTRA_CONFIGURE_ARGS+=" bash_cv_getcwd_malloc=yes"
+
+PACKAGE_CONFIG_FILES=('etc/profile'
+                      'etc/bash.bashrc')
+
+PACKAGE_SOURCES=("https://mirrors.kernel.org/gnu/bash/bash-${PACKAGE_VERSION}.tar.gz"
+                 "bash.patch"
+                 "config-top.h.patch"
+                 "etc_hosts_and_profile_path.patch"
+                 "etc-bash.bashrc"
+                 "etc-profile")
+
+PACKAGE_SOURCES_SHA256=('a8e761531c56a39dba39c7208b56e3afa7437a296f3baf108b51993336b07bbf'
+                        'ac4e46e6ce756049b9e5d44468309fbaf3122a6a0750192bfcca87aeca18beba'
+                        '4dd404f97559fe813980dcf999cf55cc7648ed52746474606e5c53b2c474e32d'
+                        '578ba152c037d40c032cdf7973401b12bd241e57d5b456f5dd855ce000509363'
+                        '789415c803ceb94fc1fe9adfeedf96dbc36a2e0a4200fb5acf3b925b8ebdf374'
+                        '16766be8ae9ad0420d524e468665b909fb8023f2aa2482a3d985340577459704')
+
+prepare() {
+    PACKAGE_SOURCE_DIR="${PACKAGE_BUILD_DIR}/bash-${PACKAGE_VERSION}"
+    cd "${PACKAGE_SOURCE_DIR}"
+
+    for patch in "${PACKAGE_MANIFEST_DIR}"/*.patch; do
+        apply_patch "${patch}"
+    done
+    unset patch
+}
+
+check() {
+    cd "${PACKAGE_SOURCE_DIR}"
+    make check
+}
+
+post_package() {
+    cd "${PACKAGE_INSTALL_DIR}/${TERMUX_PREFIX}"
+
+    rm -f ./bin/bashbug
+
+    mkdir ./etc
+    sed "s|@TERMUX_PREFIX@|${TERMUX_PREFIX}|" "${PACKAGE_MANIFEST_DIR}/etc-profile" | \
+        sed "s|@TERMUX_HOME@|${TERMUX_HOME}|" > ./etc/profile
+    sed "s|@TERMUX_PREFIX@|${TERMUX_PREFIX}|" "${PACKAGE_MANIFEST_DIR}/etc-bash.bashrc" > \
+        ./etc/bash.bashrc
+}
