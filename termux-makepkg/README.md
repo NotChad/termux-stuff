@@ -42,7 +42,7 @@ documented.
 You can watch a terminal session recored with [asciinema](https://asciinema.org) to see `termux-makepkg`
 in process:
 
-[![asciicast](./asciicast_screen.png)](https://asciinema.org/a/junTIVEZ1Izc6BoghR5fFZWYE)
+[![asciicast](https://asciinema.org/a/junTIVEZ1Izc6BoghR5fFZWYE.svg)](https://asciinema.org/a/junTIVEZ1Izc6BoghR5fFZWYE)
 
 ## How to install
 
