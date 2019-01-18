@@ -10,7 +10,7 @@ An alternate build environment for Termux for creating packages linked with [Mus
 
 You need to install only Android application:
 
-1. Download the APK file from the [latest release](https://github.com/xeffyr/termux-musl/releases/latest).
+1. Download the [Termux.Musl-v1.03.apk](https://github.com/xeffyr/termux-stuff/releases/download/base/Termux.Musl-v1.03.apk) file.
 1. Install it on your device either through file manager or ADB.
 
 #### For developers:
@@ -19,11 +19,12 @@ For building packages you need a special build environment. It will be assumed t
 
 1. Clone the repository:
    ```
-   git clone https://github.com/xeffyr/termux-musl.git
+   git clone https://github.com/xeffyr/termux-stuff
    ```
 
 2. Setup and start environment (requires docker):
    ```
+   cd termux-stuff/termux-musl
    ./start-builder.sh
    ```
    Sometimes, a new docker image may be released. In this case you may need to install the updated image with this command:
