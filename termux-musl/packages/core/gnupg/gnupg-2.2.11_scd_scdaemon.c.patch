@@ -1,0 +1,17 @@
+diff -uNr gnupg-2.2.11/scd/scdaemon.c gnupg-2.2.11.mod/scd/scdaemon.c
+--- gnupg-2.2.11/scd/scdaemon.c	2018-03-21 20:43:33.000000000 +0200
++++ gnupg-2.2.11.mod/scd/scdaemon.c	2018-12-20 19:03:01.823832572 +0200
+@@ -766,10 +766,10 @@
+          write. */
+       if (allow_coredump)
+         {
+-          if (chdir("/tmp"))
+-            log_debug ("chdir to '/tmp' failed: %s\n", strerror (errno));
++          if (chdir("@TERMUX_PREFIX@/tmp"))
++            log_debug ("chdir to '@TERMUX_PREFIX@/tmp' failed: %s\n", strerror (errno));
+           else
+-            log_debug ("changed working directory to '/tmp'\n");
++            log_debug ("changed working directory to '@TERMUX_PREFIX@/tmp'\n");
+         }
+ 
+       /* In multi server mode we need to listen on an additional

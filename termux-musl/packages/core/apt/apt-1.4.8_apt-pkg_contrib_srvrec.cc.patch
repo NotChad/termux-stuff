@@ -1,0 +1,11 @@
+diff -uNr apt-1.4.8/apt-pkg/contrib/srvrec.cc apt-1.4.8.mod/apt-pkg/contrib/srvrec.cc
+--- apt-1.4.8/apt-pkg/contrib/srvrec.cc	2017-09-13 19:47:33.000000000 +0300
++++ apt-1.4.8.mod/apt-pkg/contrib/srvrec.cc	2018-12-17 23:23:35.796370498 +0200
+@@ -22,6 +22,7 @@
+ #include <apt-pkg/error.h>
+ #include <apt-pkg/strutl.h>
+ 
++#include <sys/types.h>
+ 
+ #include "srvrec.h"
+ 

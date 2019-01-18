@@ -1,0 +1,15 @@
+diff -uNr dropbear-2018.76/agentfwd.h dropbear-2018.76.mod/agentfwd.h
+--- dropbear-2018.76/agentfwd.h	2018-02-27 16:25:10.000000000 +0200
++++ dropbear-2018.76.mod/agentfwd.h	2018-12-21 23:02:21.229333100 +0200
+@@ -43,11 +43,6 @@
+ 	const buffer *data_buf);
+ void cli_setup_agent(const struct Channel *channel);
+ 
+-#ifdef __hpux
+-#define seteuid(a)       setresuid(-1, (a), -1)
+-#define setegid(a)       setresgid(-1, (a), -1)
+-#endif
+-
+ extern const struct ChanType cli_chan_agent;
+ 
+ #endif /* DROPBEAR_CLI_AGENTFWD */

@@ -1,0 +1,20 @@
+diff -uNr hexcurse-1.60.0/src/Makefile.am hexcurse-1.60.0.mod/src/Makefile.am
+--- hexcurse-1.60.0/src/Makefile.am	2015-11-18 06:33:09.000000000 +0200
++++ hexcurse-1.60.0.mod/src/Makefile.am	2019-01-13 02:45:25.365881605 +0200
+@@ -1,3 +1,3 @@
+ bin_PROGRAMS = hexcurse 
+-AM_CPPFLAGS = -I$(top_srcdir)/include -Wall -Werror -Wextra
++AM_CPPFLAGS = -I$(top_srcdir)/include -Wall -Wextra
+ hexcurse_SOURCES = file.c llist.c screen.c hexcurse.c stack.c getopt.c acceptch.c color.c
+diff -uNr hexcurse-1.60.0/src/Makefile.in hexcurse-1.60.0.mod/src/Makefile.in
+--- hexcurse-1.60.0/src/Makefile.in	2015-11-18 06:33:09.000000000 +0200
++++ hexcurse-1.60.0.mod/src/Makefile.in	2019-01-13 02:45:33.988957366 +0200
+@@ -258,7 +258,7 @@
+ top_build_prefix = @top_build_prefix@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+-AM_CPPFLAGS = -I$(top_srcdir)/include -Wall -Werror -Wextra
++AM_CPPFLAGS = -I$(top_srcdir)/include -Wall -Wextra
+ hexcurse_SOURCES = file.c llist.c screen.c hexcurse.c stack.c getopt.c acceptch.c color.c
+ all: all-am
+ 

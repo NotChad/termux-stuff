@@ -1,0 +1,1832 @@
+From 65eb86f3e110998d30489df009d44b4bc1043adc Mon Sep 17 00:00:00 2001
+From: Szabolcs Nagy <nsz@port70.net>
+Date: Fri, 26 Jan 2018 20:32:50 +0000
+Subject: [PATCH 02/12] posix_memalign
+
+---
+ gcc/config/i386/pmm_malloc.h | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/gcc/config/i386/pmm_malloc.h b/gcc/config/i386/pmm_malloc.h
+index ffbb7f82cf5..b0b890d2403 100644
+--- a/gcc/config/i386/pmm_malloc.h
++++ b/gcc/config/i386/pmm_malloc.h
+@@ -27,12 +27,13 @@
+ #include <stdlib.h>
+ 
+ /* We can't depend on <stdlib.h> since the prototype of posix_memalign
+-   may not be visible.  */
++   may not be visible and we can't pollute the namespace either.  */
+ #ifndef __cplusplus
+-extern int posix_memalign (void **, size_t, size_t);
++extern int _mm_posix_memalign (void **, size_t, size_t)
+ #else
+-extern "C" int posix_memalign (void **, size_t, size_t) throw ();
++extern "C" int _mm_posix_memalign (void **, size_t, size_t) throw ()
+ #endif
++__asm__("posix_memalign");
+ 
+ static __inline void *
+ _mm_malloc (size_t __size, size_t __alignment)
+@@ -42,7 +43,7 @@ _mm_malloc (size_t __size, size_t __alignment)
+     return malloc (__size);
+   if (__alignment == 2 || (sizeof (void *) == 8 && __alignment == 4))
+     __alignment = sizeof (void *);
+-  if (posix_memalign (&__ptr, __alignment, __size) == 0)
++  if (_mm_posix_memalign (&__ptr, __alignment, __size) == 0)
+     return __ptr;
+   else
+     return NULL;
+-- 
+2.17.1
+
+From 48c670d2678e0323d88eb72205e039f393cabe05 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 29 Mar 2013 08:59:00 +0400
+Subject: [PATCH 03/39] gcc: poison-system-directories
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+
+Upstream-Status: Inappropriate [distribution: codesourcery]
+---
+ gcc/common.opt      |  4 ++++
+ gcc/config.in       |  6 ++++++
+ gcc/configure       | 16 ++++++++++++++++
+ gcc/configure.ac    | 10 ++++++++++
+ gcc/doc/invoke.texi |  9 +++++++++
+ gcc/gcc.c           |  2 ++
+ gcc/incpath.c       | 19 +++++++++++++++++++
+ 7 files changed, 66 insertions(+)
+
+diff --git a/gcc/common.opt b/gcc/common.opt
+index d6ef85928f3..7b29efe3882 100644
+--- a/gcc/common.opt
++++ b/gcc/common.opt
+@@ -679,6 +679,10 @@ Wreturn-local-addr
+ Common Var(warn_return_local_addr) Init(1) Warning
+ Warn about returning a pointer/reference to a local or temporary variable.
+ 
++Wpoison-system-directories
++Common Var(flag_poison_system_directories) Init(1) Warning
++Warn for -I and -L options using system directories if cross compiling
++
+ Wshadow
+ Common Var(warn_shadow) Warning
+ Warn when one variable shadows another.  Same as -Wshadow=global.
+diff --git a/gcc/config.in b/gcc/config.in
+index 5bccb408016..1c784a8276b 100644
+--- a/gcc/config.in
++++ b/gcc/config.in
+@@ -194,6 +194,12 @@
+ #endif
+ 
+ 
++/* Define to warn for use of native system header directories */
++#ifndef USED_FOR_TARGET
++#undef ENABLE_POISON_SYSTEM_DIRECTORIES
++#endif
++
++
+ /* Define if you want all operations on RTL (the basic data structure of the
+    optimizer and back end) to be checked for dynamic type safety at runtime.
+    This is quite expensive. */
+diff --git a/gcc/configure b/gcc/configure
+index 5c345ce0fd7..cafd05fd150 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -953,6 +953,7 @@ with_system_zlib
+ enable_maintainer_mode
+ enable_link_mutex
+ enable_version_specific_runtime_libs
++enable_poison_system_directories
+ enable_plugin
+ enable_host_shared
+ enable_libquadmath_support
+@@ -1696,6 +1697,8 @@ Optional Features:
+   --enable-version-specific-runtime-libs
+                           specify that runtime libraries should be installed
+                           in a compiler-specific directory
++  --enable-poison-system-directories
++                          warn for use of native system header directories
+   --enable-plugin         enable plugin support
+   --enable-host-shared    build host code as shared libraries
+   --disable-libquadmath-support
+@@ -29715,6 +29718,19 @@ if test "${enable_version_specific_runtime_libs+set}" = set; then :
+ fi
+ 
+ 
++# Check whether --enable-poison-system-directories was given.
++if test "${enable_poison_system_directories+set}" = set; then :
++  enableval=$enable_poison_system_directories;
++else
++  enable_poison_system_directories=no
++fi
++
++if test "x${enable_poison_system_directories}" = "xyes"; then
++
++$as_echo "#define ENABLE_POISON_SYSTEM_DIRECTORIES 1" >>confdefs.h
++
++fi
++
+ # Substitute configuration variables
+ 
+ 
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index 65dbf1f2f80..dd5b38195ce 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -6341,6 +6341,16 @@ AC_ARG_ENABLE(version-specific-runtime-libs,
+                 [specify that runtime libraries should be
+                  installed in a compiler-specific directory])])
+ 
++AC_ARG_ENABLE([poison-system-directories],
++             AS_HELP_STRING([--enable-poison-system-directories],
++                            [warn for use of native system header directories]),,
++             [enable_poison_system_directories=no])
++if test "x${enable_poison_system_directories}" = "xyes"; then
++  AC_DEFINE([ENABLE_POISON_SYSTEM_DIRECTORIES],
++           [1],
++           [Define to warn for use of native system header directories])
++fi
++
+ # Substitute configuration variables
+ AC_SUBST(subdirs)
+ AC_SUBST(srcdir)
+diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
+index 255149fcfb8..cb71b60fe3c 100644
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
+@@ -303,6 +303,7 @@ Objective-C and Objective-C++ Dialects}.
+ -Wpacked  -Wpacked-bitfield-compat -Wpacked-not-aligned -Wpadded @gol
+ -Wparentheses  -Wno-pedantic-ms-format @gol
+ -Wplacement-new  -Wplacement-new=@var{n} @gol
++-Wno-poison-system-directories @gol
+ -Wpointer-arith  -Wpointer-compare  -Wno-pointer-to-int-cast @gol
+ -Wno-pragmas  -Wredundant-decls  -Wrestrict  -Wno-return-local-addr @gol
+ -Wreturn-type  -Wsequence-point  -Wshadow  -Wno-shadow-ivar @gol
+@@ -5712,6 +5713,14 @@ made up of data only and thus requires no special treatment.  But, for
+ most targets, it is made up of code and thus requires the stack to be
+ made executable in order for the program to work properly.
+ 
++@item -Wno-poison-system-directories
++@opindex Wno-poison-system-directories
++Do not warn for @option{-I} or @option{-L} options using system
++directories such as @file{/usr/include} when cross compiling.  This
++option is intended for use in chroot environments when such
++directories contain the correct headers and libraries for the target
++system rather than the host.
++
+ @item -Wfloat-equal
+ @opindex Wfloat-equal
+ @opindex Wno-float-equal
+diff --git a/gcc/gcc.c b/gcc/gcc.c
+index a716f708259..02b3cd39fc2 100644
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -1037,6 +1037,8 @@ proper position among the other output files.  */
+    "%{fuse-ld=*:-fuse-ld=%*} " LINK_COMPRESS_DEBUG_SPEC \
+    "%X %{o*} %{e*} %{N} %{n} %{r}\
+     %{s} %{t} %{u*} %{z} %{Z} %{!nostdlib:%{!nostartfiles:%S}} \
++    %{Wno-poison-system-directories:--no-poison-system-directories} \
++    %{Werror=poison-system-directories:--error-poison-system-directories} \
+     %{static|no-pie|static-pie:} %{L*} %(mfwrap) %(link_libgcc) " \
+     VTABLE_VERIFICATION_SPEC " " SANITIZER_EARLY_SPEC " %o " CHKP_SPEC " \
+     %{fopenacc|fopenmp|%:gt(%{ftree-parallelize-loops=*:%*} 1):\
+diff --git a/gcc/incpath.c b/gcc/incpath.c
+index b11c6a57939..e3b7a21966f 100644
+--- a/gcc/incpath.c
++++ b/gcc/incpath.c
+@@ -26,6 +26,7 @@
+ #include "intl.h"
+ #include "incpath.h"
+ #include "cppdefault.h"
++#include "diagnostic-core.h"
+ 
+ /* Microsoft Windows does not natively support inodes.
+    VMS has non-numeric inodes.  */
+@@ -393,6 +394,26 @@ merge_include_chains (const char *sysroot, cpp_reader *pfile, int verbose)
+ 	}
+       fprintf (stderr, _("End of search list.\n"));
+     }
++
++#ifdef ENABLE_POISON_SYSTEM_DIRECTORIES
++  if (flag_poison_system_directories)
++    {
++       struct cpp_dir *p;
++
++       for (p = heads[INC_QUOTE]; p; p = p->next)
++         {
++          if ((!strncmp (p->name, "/usr/include", 12))
++              || (!strncmp (p->name, "/usr/local/include", 18))
++              || (!strncmp (p->name, "/usr/X11R6/include", 18))
++              || (!strncmp (p->name, "/sw/include", 11))
++              || (!strncmp (p->name, "/opt/include", 12)))
++            warning (OPT_Wpoison_system_directories,
++                     "include location \"%s\" is unsafe for "
++                     "cross-compilation",
++                     p->name);
++         }
++    }
++#endif
+ }
+ 
+ /* Use given -I paths for #include "..." but not #include <...>, and
+-- 
+2.17.0
+
+From b693804c8dba92fea7beee98f0aa520853a0532b Mon Sep 17 00:00:00 2001
+From: Szabolcs Nagy <nsz@port70.net>
+Date: Thu, 22 Dec 2016 11:22:28 +0000
+Subject: [PATCH 08/12] s390x muslldso
+
+---
+ gcc/config/s390/linux.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/gcc/config/s390/linux.h b/gcc/config/s390/linux.h
+index 525c17c2c9f..2d4f4a0654e 100644
+--- a/gcc/config/s390/linux.h
++++ b/gcc/config/s390/linux.h
+@@ -76,6 +76,9 @@ along with GCC; see the file COPYING3.  If not see
+ #define GLIBC_DYNAMIC_LINKER32 "/lib/ld.so.1"
+ #define GLIBC_DYNAMIC_LINKER64 "/lib/ld64.so.1"
+ 
++#define MUSL_DYNAMIC_LINKER32 "/lib/ld-musl-s390.so.1"
++#define MUSL_DYNAMIC_LINKER64 "/lib/ld-musl-s390x.so.1"
++
+ #undef  LINK_SPEC
+ #define LINK_SPEC \
+   "%{m31:-m elf_s390}%{m64:-m elf64_s390} \
+-- 
+2.17.1
+
+From 47467f3ab0fb2f2fcede81060fe8bb339d0909eb Mon Sep 17 00:00:00 2001
+From: Szabolcs Nagy <nsz@port70.net>
+Date: Wed, 28 Feb 2018 00:54:05 +0000
+Subject: [PATCH 10/12] ldbl128 config
+
+---
+ gcc/configure    | 13 +++++++++++++
+ gcc/configure.ac | 16 ++++++++++++++--
+ 2 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/gcc/configure b/gcc/configure
+index 6121e163259..07ff8597d48 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -29309,6 +29309,15 @@ if test "${with_long_double_128+set}" = set; then :
+   withval=$with_long_double_128; gcc_cv_target_ldbl128="$with_long_double_128"
+ else
+ 
++      case "$target" in
++	s390*-*-linux-musl*)
++	  gcc_cv_target_ldbl128=yes
++	  ;;
++	powerpc*-*-linux-musl*)
++	  gcc_cv_target_ldbl128=no
++	  ;;
++	*)
++
+ if test $glibc_version_major -gt 2 \
+   || ( test $glibc_version_major -eq 2 && test $glibc_version_minor -ge 4 ); then :
+   gcc_cv_target_ldbl128=yes
+@@ -29320,6 +29329,10 @@ else
+       && gcc_cv_target_ldbl128=yes
+ 
+ fi
++
++	  ;;
++      esac
++
+ fi
+ 
+     ;;
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index b066cc609e1..6c15ed898c0 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -5971,13 +5971,25 @@ case "$target" in
+     AC_ARG_WITH(long-double-128,
+       [AS_HELP_STRING([--with-long-double-128],
+ 		      [use 128-bit long double by default])],
+-      gcc_cv_target_ldbl128="$with_long_double_128",
++      gcc_cv_target_ldbl128="$with_long_double_128", [
++      case "$target" in
++	s390*-*-linux-musl*)
++	  gcc_cv_target_ldbl128=yes
++	  ;;
++	powerpc*-*-linux-musl*)
++	  gcc_cv_target_ldbl128=no
++	  ;;
++	*)]
+       [GCC_GLIBC_VERSION_GTE_IFELSE([2], [4], [gcc_cv_target_ldbl128=yes], [
+       [gcc_cv_target_ldbl128=no
+       grep '^[ 	]*#[ 	]*define[ 	][ 	]*__LONG_DOUBLE_MATH_OPTIONAL' \
+         $target_header_dir/bits/wordsize.h > /dev/null 2>&1 \
+       && gcc_cv_target_ldbl128=yes
+-      ]])])
++      ]])]
++      [
++	  ;;
++      esac
++      ])
+     ;;
+ esac
+ if test x$gcc_cv_target_ldbl128 = xyes; then
+-- 
+2.17.1
+
+From a4aa319f7c19e564dced3daeb7222c9315af936c Mon Sep 17 00:00:00 2001
+From: Szabolcs Nagy <nsz@port70.net>
+Date: Sat, 18 Aug 2018 23:58:45 +0000
+Subject: [PATCH 12/12] static-pie
+
+in gcc-8 -static means static non-pie, even if -pie or -static-pie
+are specified, -static-pie can be used to build static pie.
+
+in musl toolchains -static -pie always meant static pie, so this
+patch fixes the link specs accordingly, the new -static-pie is just
+an alias to -static -pie.
+---
+ gcc/common.opt            |  4 ++--
+ gcc/config/gnu-user.h     | 12 +++++-------
+ gcc/config/rs6000/sysv4.h | 11 +++++------
+ gcc/gcc.c                 |  6 +++---
+ 4 files changed, 15 insertions(+), 18 deletions(-)
+
+diff --git a/gcc/common.opt b/gcc/common.opt
+index b52ef0b38c8..0ce5857e01d 100644
+--- a/gcc/common.opt
++++ b/gcc/common.opt
+@@ -3197,11 +3197,11 @@ Driver
+ 
+ no-pie
+ Driver RejectNegative Negative(shared)
+-Don't create a dynamically linked position independent executable.
++Don't create a position independent executable.
+ 
+ pie
+ Driver RejectNegative Negative(no-pie)
+-Create a dynamically linked position independent executable.
++Create a position independent executable.
+ 
+ static-pie
+ Driver RejectNegative Negative(pie)
+diff --git a/gcc/config/gnu-user.h b/gcc/config/gnu-user.h
+index 8620de3e42d..235328a2642 100644
+--- a/gcc/config/gnu-user.h
++++ b/gcc/config/gnu-user.h
+@@ -52,13 +52,12 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define GNU_USER_TARGET_STARTFILE_SPEC \
+   "%{shared:; \
+      pg|p|profile:%{static-pie:grcrt1.o%s;:gcrt1.o%s}; \
+-     static:crt1.o%s; \
+-     static-pie:rcrt1.o%s; \
++     static|static-pie:%{" PIE_SPEC ":rcrt1.o%s;:crt1.o%s}; \
+      " PIE_SPEC ":Scrt1.o%s; \
+      :crt1.o%s} \
+    crti.o%s \
+-   %{static:crtbeginT.o%s; \
+-     shared|static-pie|" PIE_SPEC ":crtbeginS.o%s; \
++   %{shared|" PIE_SPEC ":crtbeginS.o%s; \
++     static:crtbeginT.o%s; \
+      :crtbegin.o%s} \
+    %{fvtable-verify=none:%s; \
+      fvtable-verify=preinit:vtv_start_preinit.o%s; \
+@@ -92,8 +91,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+   "%{fvtable-verify=none:%s; \
+      fvtable-verify=preinit:vtv_end_preinit.o%s; \
+      fvtable-verify=std:vtv_end.o%s} \
+-   %{static:crtend.o%s; \
+-     shared|static-pie|" PIE_SPEC ":crtendS.o%s; \
++   %{shared|" PIE_SPEC ":crtendS.o%s; \
+      :crtend.o%s} \
+    crtn.o%s \
+    " CRTOFFLOADEND
+@@ -133,7 +131,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define LIB_SPEC GNU_USER_TARGET_LIB_SPEC
+ 
+ #if defined(HAVE_LD_EH_FRAME_HDR)
+-#define LINK_EH_SPEC "%{!static|static-pie:--eh-frame-hdr} "
++#define LINK_EH_SPEC "%{!static|" PIE_SPEC ":--eh-frame-hdr} "
+ #endif
+ 
+ #undef LINK_GCC_C_SEQUENCE_SPEC
+diff --git a/gcc/config/rs6000/sysv4.h b/gcc/config/rs6000/sysv4.h
+index bb19d0dcd41..bb2a2324eb0 100644
+--- a/gcc/config/rs6000/sysv4.h
++++ b/gcc/config/rs6000/sysv4.h
+@@ -763,12 +763,12 @@ ENDIAN_SELECT(" -mbig", " -mlittle", DEFAULT_ASM_ENDIAN)
+ #define	STARTFILE_LINUX_SPEC \
+   "%{shared:; \
+      pg|p|profile:gcrt1.o%s; \
+-     static:crt1.o%s; \
+-     static-pie|" PIE_SPEC ":Scrt1.o%s; \
++     static|static-pie:%{" PIE_SPEC ":rcrt1.o%s;:crt1.o%s}; \
++     " PIE_SPEC ":Scrt1.o%s; \
+      :crt1.o%s} \
+    %{mnewlib:ecrti.o%s;:crti.o%s} \
+-   %{static:crtbeginT.o%s; \
+-     shared|static-pie|" PIE_SPEC ":crtbeginS.o%s; \
++   %{shared|" PIE_SPEC ":crtbeginS.o%s; \
++     static:crtbeginT.o%s; \
+      :crtbegin.o%s} \
+    %{fvtable-verify=none:%s; \
+      fvtable-verify=preinit:vtv_start_preinit.o%s; \
+@@ -781,8 +781,7 @@ ENDIAN_SELECT(" -mbig", " -mlittle", DEFAULT_ASM_ENDIAN)
+   "%{fvtable-verify=none:%s; \
+      fvtable-verify=preinit:vtv_end_preinit.o%s; \
+      fvtable-verify=std:vtv_end.o%s} \
+-   %{static:crtend.o%s; \
+-     shared|static-pie|" PIE_SPEC ":crtendS.o%s; \
++   %{shared|" PIE_SPEC ":crtendS.o%s; \
+      :crtend.o%s} \
+    %{mnewlib:ecrtn.o%s;:crtn.o%s} \
+    " CRTOFFLOADEND
+diff --git a/gcc/gcc.c b/gcc/gcc.c
+index eb1610ba8b0..87560afb03c 100644
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -900,7 +900,7 @@ proper position among the other output files.  */
+ #define NO_FPIE_AND_FPIC_SPEC	NO_FPIE_SPEC "|" NO_FPIC_SPEC
+ #define FPIE_OR_FPIC_SPEC	NO_FPIE_AND_FPIC_SPEC ":;"
+ #else
+-#define PIE_SPEC		"pie"
++#define PIE_SPEC		"pie|static-pie"
+ #define FPIE1_SPEC		"fpie"
+ #define NO_FPIE1_SPEC		FPIE1_SPEC ":;"
+ #define FPIE2_SPEC		"fPIE"
+@@ -924,12 +924,12 @@ proper position among the other output files.  */
+ #ifndef LINK_PIE_SPEC
+ #ifdef HAVE_LD_PIE
+ #ifndef LD_PIE_SPEC
+-#define LD_PIE_SPEC "-pie"
++#define LD_PIE_SPEC "-pie %{static|static-pie:--no-dynamic-linker -z text -Bsymbolic}"
+ #endif
+ #else
+ #define LD_PIE_SPEC ""
+ #endif
+-#define LINK_PIE_SPEC "%{static|shared|r:;" PIE_SPEC ":" LD_PIE_SPEC "} "
++#define LINK_PIE_SPEC "%{shared|r:;" PIE_SPEC ":" LD_PIE_SPEC "} "
+ #endif
+ 
+ #ifndef LINK_BUILDID_SPEC
+-- 
+2.17.1
+
+--- ./libgomp/configure.tgt.orig	2018-09-25 13:44:16.654561098 -0400
++++ ./libgomp/configure.tgt	2018-09-25 13:44:50.452688100 -0400
+@@ -10,23 +10,6 @@
+ #  XCFLAGS		Add extra compile flags to use.
+ #  XLDFLAGS		Add extra link flags to use.
+ 
+-# Optimize TLS usage by avoiding the overhead of dynamic allocation.
+-if test $gcc_cv_have_tls = yes ; then
+-  case "${target}" in
+-
+-    *-*-k*bsd*-gnu*)
+-	;;
+-
+-    *-*-linux* | *-*-gnu*)
+-	XCFLAGS="${XCFLAGS} -ftls-model=initial-exec"
+-	;;
+-
+-    *-*-rtems*)
+-	XCFLAGS="${XCFLAGS} -ftls-model=local-exec"
+-	;;
+-  esac
+-fi
+-
+ # Since we require POSIX threads, assume a POSIX system by default.
+ config_path="posix"
+# Turn on -Wl,-z,relro,-z,now by default.
+
+---
+ gcc/doc/invoke.texi |    3 +++
+ gcc/gcc.c           |    1 +
+ 2 files changed, 4 insertions(+), 0 deletions(-)
+
+Index: b/gcc/doc/invoke.texi
+===================================================================
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
+@@ -11424,6 +11424,9 @@ For example, @option{-Wl,-Map,output.map
+ linker.  When using the GNU linker, you can also get the same effect with
+ @option{-Wl,-Map=output.map}.
+ 
++NOTE: In Alpine Linux, for LDFLAGS, the option
++@option{-Wl,-z,relro,now} is used.  To disable, use @option{-Wl,-z,norelro}.
++
+ @item -u @var{symbol}
+ @opindex u
+ Pretend the symbol @var{symbol} is undefined, to force linking of
+Index: b/gcc/gcc.c
+===================================================================
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -890,6 +890,7 @@ proper position among the other output f
+    "%{flto|flto=*:%<fcompare-debug*} \
+     %{flto} %{fno-lto} %{flto=*} %l " LINK_PIE_SPEC \
+    "%{fuse-ld=*:-fuse-ld=%*} " LINK_COMPRESS_DEBUG_SPEC \
++   "-z relro -z now " \
+    "%X %{o*} %{e*} %{N} %{n} %{r}\
+     %{s} %{t} %{u*} %{z} %{Z} %{!nostdlib:%{!nostartfiles:%S}} " VTABLE_VERIFICATION_SPEC " \
+     %{static:} %{L*} %(mfwrap) %(link_libgcc) " SANITIZER_EARLY_SPEC " %o\
+# DP: Turn on -D_FORTIFY_SOURCE=2 by default for C, C++, ObjC, ObjC++,
+# DP: if the optimization level is > 0
+
+---
+ gcc/doc/invoke.texi          |    6 ++++++
+ gcc/c-family/c-cppbuiltin.c  |    3 +
+ 2 files changed, 9 insertions(+), 0 deletions(-)
+
+Index: b/gcc/doc/invoke.texi
+===================================================================
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
+@@ -7840,6 +7840,12 @@ also turns on the following optimization
+ Please note the warning under @option{-fgcse} about
+ invoking @option{-O2} on programs that use computed gotos.
+ 
++NOTE: In Alpine Linux, @option{-D_FORTIFY_SOURCE=2} is
++set by default, and is activated when @option{-O} is set to 2 or higher.
++This enables additional compile-time and run-time checks for several libc
++functions.  To disable, specify either @option{-U_FORTIFY_SOURCE} or
++@option{-D_FORTIFY_SOURCE=0}.
++
+ @item -O3
+ @opindex O3
+ Optimize yet more.  @option{-O3} turns on all optimizations specified
+Index: b/gcc/c-family/c-cppbuiltin.c
+===================================================================
+--- a/gcc/c-family/c-cppbuiltin.c
++++ b/gcc/c-family/c-cppbuiltin.c
+@@ -1176,6 +1176,10 @@ c_cpp_builtins (cpp_reader *pfile)
+   builtin_define_with_value ("__REGISTER_PREFIX__", REGISTER_PREFIX, 0);
+   builtin_define_with_value ("__USER_LABEL_PREFIX__", user_label_prefix, 0);
+ 
++  /* Fortify Source enabled by default for optimization levels > 0 */
++  if (optimize)
++    builtin_define_with_int_value ("_FORTIFY_SOURCE", 2);
++
+   /* Misc.  */
+   if (flag_gnu89_inline)
+     cpp_define (pfile, "__GNUC_GNU_INLINE__");
+# DP: On linux targets pass --as-needed by default to the linker, but always
+# DP: link the sanitizer libraries with --no-as-needed.
+
+Index: b/gcc/gcc.c
+===================================================================
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -692,8 +692,11 @@ proper position among the other output f
+ #ifdef LIBASAN_EARLY_SPEC
+ #define LIBASAN_SPEC STATIC_LIBASAN_LIBS
+ #elif defined(HAVE_LD_STATIC_DYNAMIC)
+-#define LIBASAN_SPEC "%{static-libasan:" LD_STATIC_OPTION \
+-		     "} -lasan %{static-libasan:" LD_DYNAMIC_OPTION "}" \
++#define LIBASAN_SPEC "%{static-libasan:" LD_STATIC_OPTION "}" \
++		     " %{!static-libasan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " -lasan " \
++		     " %{static-libasan:" LD_DYNAMIC_OPTION "}" \
++		     " %{!static-libasan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
+ 		     STATIC_LIBASAN_LIBS
+ #else
+ #define LIBASAN_SPEC "-lasan" STATIC_LIBASAN_LIBS
+@@ -710,8 +713,11 @@ proper position among the other output f
+ #ifdef LIBTSAN_EARLY_SPEC
+ #define LIBTSAN_SPEC STATIC_LIBTSAN_LIBS
+ #elif defined(HAVE_LD_STATIC_DYNAMIC)
+-#define LIBTSAN_SPEC "%{static-libtsan:" LD_STATIC_OPTION \
+-		     "} -ltsan %{static-libtsan:" LD_DYNAMIC_OPTION "}" \
++#define LIBTSAN_SPEC "%{static-libtsan:" LD_STATIC_OPTION "}" \
++		     " %{!static-libtsan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " -ltsan " \
++		     " %{static-libtsan:" LD_DYNAMIC_OPTION "}" \
++		     " %{!static-libtsan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
+ 		     STATIC_LIBTSAN_LIBS
+ #else
+ #define LIBTSAN_SPEC "-ltsan" STATIC_LIBTSAN_LIBS
+@@ -728,8 +734,11 @@ proper position among the other output f
+ #ifdef LIBLSAN_EARLY_SPEC
+ #define LIBLSAN_SPEC STATIC_LIBLSAN_LIBS
+ #elif defined(HAVE_LD_STATIC_DYNAMIC)
+-#define LIBLSAN_SPEC "%{static-liblsan:" LD_STATIC_OPTION \
+-		     "} -llsan %{static-liblsan:" LD_DYNAMIC_OPTION "}" \
++#define LIBLSAN_SPEC "%{static-liblsan:" LD_STATIC_OPTION "}" \
++		     " %{!static-liblsan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " -llsan " \
++		     " %{static-liblsan:" LD_DYNAMIC_OPTION "}" \
++		     " %{!static-liblsan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
+ 		     STATIC_LIBLSAN_LIBS
+ #else
+ #define LIBLSAN_SPEC "-llsan" STATIC_LIBLSAN_LIBS
+@@ -744,8 +753,11 @@ proper position among the other output f
+ #define STATIC_LIBUBSAN_LIBS \
+   " %{static-libubsan|static:%:include(libsanitizer.spec)%(link_libubsan)}"
+ #ifdef HAVE_LD_STATIC_DYNAMIC
+-#define LIBUBSAN_SPEC "%{static-libubsan:" LD_STATIC_OPTION \
+-		     "} -lubsan %{static-libubsan:" LD_DYNAMIC_OPTION "}" \
++#define LIBUBSAN_SPEC "%{static-libubsan:" LD_STATIC_OPTION "}" \
++		     " %{!static-libubsan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " -lubsan " \
++		     " %{static-libubsan:" LD_DYNAMIC_OPTION "}" \
++		     " %{!static-libubsan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
+ 		     STATIC_LIBUBSAN_LIBS
+ #else
+ #define LIBUBSAN_SPEC "-lubsan" STATIC_LIBUBSAN_LIBS
+Index: b/gcc/config/gnu-user.h
+===================================================================
+--- a/gcc/config/gnu-user.h
++++ b/gcc/config/gnu-user.h
+@@ -161,15 +161,15 @@ see the files COPYING3 and COPYING.RUNTI
+ #define LIBASAN_EARLY_SPEC "%{!shared:libasan_preinit%O%s} " \
+   "%{static-libasan:%{!shared:" \
+   LD_STATIC_OPTION " --whole-archive -lasan --no-whole-archive " \
+-  LD_DYNAMIC_OPTION "}}%{!static-libasan:-lasan}"
++  LD_DYNAMIC_OPTION "}}%{!static-libasan:%{!fuse-ld=gold:--push-state} --no-as-needed -lasan %{fuse-ld=gold:--as-needed;:--pop-state}}"
+ #undef LIBTSAN_EARLY_SPEC
+ #define LIBTSAN_EARLY_SPEC "%{!shared:libtsan_preinit%O%s} " \
+   "%{static-libtsan:%{!shared:" \
+   LD_STATIC_OPTION " --whole-archive -ltsan --no-whole-archive " \
+-  LD_DYNAMIC_OPTION "}}%{!static-libtsan:-ltsan}"
++  LD_DYNAMIC_OPTION "}}%{!static-libtsan:%{!fuse-ld=gold:--push-state} --no-as-needed -ltsan %{fuse-ld=gold:--as-needed;:--pop-state}}"
+ #undef LIBLSAN_EARLY_SPEC
+ #define LIBLSAN_EARLY_SPEC "%{!shared:liblsan_preinit%O%s} " \
+   "%{static-liblsan:%{!shared:" \
+   LD_STATIC_OPTION " --whole-archive -llsan --no-whole-archive " \
+-  LD_DYNAMIC_OPTION "}}%{!static-liblsan:-llsan}"
++  LD_DYNAMIC_OPTION "}}%{!static-liblsan:%{!fuse-ld=gold:--push-state} --no-as-needed -llsan %{fuse-ld=gold:--as-needed;:--pop-state}}"
+ #endif
+Index: b/gcc/config/aarch64/aarch64-linux.h
+===================================================================
+--- a/gcc/config/aarch64/aarch64-linux.h
++++ b/gcc/config/aarch64/aarch64-linux.h
+@@ -35,6 +35,7 @@
+ #define CPP_SPEC "%{pthread:-D_REENTRANT}"
+ 
+ #define LINUX_TARGET_LINK_SPEC  "%{h*}		\
++   --as-needed					\
+    %{static:-Bstatic}				\
+    %{shared:-shared}				\
+    %{symbolic:-Bsymbolic}			\
+Index: b/gcc/config/ia64/linux.h
+===================================================================
+--- a/gcc/config/ia64/linux.h
++++ b/gcc/config/ia64/linux.h
+@@ -58,7 +58,7 @@ do {						\
+ #define GLIBC_DYNAMIC_LINKER "/lib/ld-linux-ia64.so.2"
+ 
+ #undef LINK_SPEC
+-#define LINK_SPEC "\
++#define LINK_SPEC " --as-needed \
+   %{shared:-shared} \
+   %{!shared: \
+     %{!static: \
+Index: b/gcc/config/sparc/linux.h
+===================================================================
+--- a/gcc/config/sparc/linux.h
++++ b/gcc/config/sparc/linux.h
+@@ -86,7 +86,7 @@ extern const char *host_detect_local_cpu
+ #define GLIBC_DYNAMIC_LINKER "/lib/ld-linux.so.2"
+ 
+ #undef  LINK_SPEC
+-#define LINK_SPEC "-m elf32_sparc %{shared:-shared} \
++#define LINK_SPEC "-m elf32_sparc --as-needed %{shared:-shared} \
+   %{!mno-relax:%{!r:-relax}} \
+   %{!shared: \
+     %{!static: \
+Index: b/gcc/config/s390/linux.h
+===================================================================
+--- a/gcc/config/s390/linux.h
++++ b/gcc/config/s390/linux.h
+@@ -78,7 +78,7 @@ along with GCC; see the file COPYING3.
+ 
+ #undef  LINK_SPEC
+ #define LINK_SPEC \
+-  "%{m31:-m elf_s390}%{m64:-m elf64_s390} \
++  "%{m31:-m elf_s390}%{m64:-m elf64_s390} --as-needed \
+    %{shared:-shared} \
+    %{!shared: \
+       %{static:-static} \
+Index: b/gcc/config/rs6000/linux64.h
+===================================================================
+--- a/gcc/config/rs6000/linux64.h
++++ b/gcc/config/rs6000/linux64.h
+@@ -490,13 +490,13 @@ extern int dot_symbols;
+ 					   " -m elf64ppc")
+ #endif
+ 
+-#define LINK_OS_LINUX_SPEC32 LINK_OS_LINUX_EMUL32 " %{!shared: %{!static: \
++#define LINK_OS_LINUX_SPEC32 LINK_OS_LINUX_EMUL32 " --as-needed %{!shared: %{!static: \
+   %{!static-pie: \
+     %{rdynamic:-export-dynamic} \
+     -dynamic-linker " GNU_USER_DYNAMIC_LINKER32 "}}} \
+   %(link_os_extra_spec32)"
+ 
+-#define LINK_OS_LINUX_SPEC64 LINK_OS_LINUX_EMUL64 " %{!shared: %{!static: \
++#define LINK_OS_LINUX_SPEC64 LINK_OS_LINUX_EMUL64 " --as-needed %{!shared: %{!static: \
+   %{!static-pie: \
+     %{rdynamic:-export-dynamic} \
+     -dynamic-linker " GNU_USER_DYNAMIC_LINKER64 "}}} \
+Index: b/gcc/config/rs6000/sysv4.h
+===================================================================
+--- a/gcc/config/rs6000/sysv4.h
++++ b/gcc/config/rs6000/sysv4.h
+@@ -811,7 +811,7 @@ ENDIAN_SELECT(" -mbig", " -mlittle", DEF
+   CHOOSE_DYNAMIC_LINKER (GLIBC_DYNAMIC_LINKER, UCLIBC_DYNAMIC_LINKER, \
+ 			 MUSL_DYNAMIC_LINKER)
+ 
+-#define LINK_OS_LINUX_SPEC "-m elf32ppclinux %{!shared: %{!static: \
++#define LINK_OS_LINUX_SPEC "-m elf32ppclinux --as-needed %{!shared: %{!static: \
+   %{rdynamic:-export-dynamic} \
+   -dynamic-linker " GNU_USER_DYNAMIC_LINKER "}}"
+ 
+Index: b/gcc/config/i386/gnu-user64.h
+===================================================================
+--- a/gcc/config/i386/gnu-user64.h
++++ b/gcc/config/i386/gnu-user64.h
+@@ -56,6 +56,7 @@
+                   "%{" SPEC_64 ":-m " GNU_USER_LINK_EMULATION64 "} \
+                    %{" SPEC_32 ":-m " GNU_USER_LINK_EMULATION32 "} \
+                    %{" SPEC_X32 ":-m " GNU_USER_LINK_EMULATIONX32 "} \
++  --as-needed \
+   %{shared:-shared} \
+   %{!shared: \
+     %{!static: \
+Index: b/gcc/config/i386/gnu-user.h
+===================================================================
+--- a/gcc/config/i386/gnu-user.h
++++ b/gcc/config/i386/gnu-user.h
+@@ -74,7 +74,7 @@ along with GCC; see the file COPYING3.
+   { "link_emulation", GNU_USER_LINK_EMULATION },\
+   { "dynamic_linker", GNU_USER_DYNAMIC_LINKER }
+ 
+-#define GNU_USER_TARGET_LINK_SPEC "-m %(link_emulation) %{shared:-shared} \
++#define GNU_USER_TARGET_LINK_SPEC "-m %(link_emulation) --as-needed %{shared:-shared} \
+   %{!shared: \
+     %{!static: \
+       %{!static-pie: \
+Index: b/gcc/config/alpha/linux-elf.h
+===================================================================
+--- a/gcc/config/alpha/linux-elf.h
++++ b/gcc/config/alpha/linux-elf.h
+@@ -37,7 +37,7 @@ along with GCC; see the file COPYING3.
+ 
+ #define ELF_DYNAMIC_LINKER	GNU_USER_DYNAMIC_LINKER
+ 
+-#define LINK_SPEC "-m elf64alpha %{G*} %{relax:-relax}		\
++#define LINK_SPEC "-m elf64alpha --as-needed %{G*} %{relax:-relax}		\
+   %{O*:-O3} %{!O*:-O1}						\
+   %{shared:-shared}						\
+   %{!shared:							\
+Index: b/gcc/config/arm/linux-elf.h
+===================================================================
+--- a/gcc/config/arm/linux-elf.h
++++ b/gcc/config/arm/linux-elf.h
+@@ -70,6 +70,7 @@
+      %{rdynamic:-export-dynamic} \
+      %{!shared:-dynamic-linker " GNU_USER_DYNAMIC_LINKER "}} \
+    -X \
++   --as-needed \
+    %{mbig-endian:-EB} %{mlittle-endian:-EL}" \
+    SUBTARGET_EXTRA_LINK_SPEC
+ 
+Index: b/gcc/config/mips/gnu-user.h
+===================================================================
+--- a/gcc/config/mips/gnu-user.h
++++ b/gcc/config/mips/gnu-user.h
+@@ -55,6 +55,7 @@ along with GCC; see the file COPYING3.
+ #undef GNU_USER_TARGET_LINK_SPEC
+ #define GNU_USER_TARGET_LINK_SPEC "\
+   %{G*} %{EB} %{EL} %{mips*} %{shared} \
++ -as-needed \
+   %{!shared: \
+     %{!static: \
+       %{rdynamic:-export-dynamic} \
+Index: b/gcc/config/riscv/linux.h
+===================================================================
+--- a/gcc/config/riscv/linux.h
++++ b/gcc/config/riscv/linux.h
+@@ -50,6 +50,7 @@
+ #define CPP_SPEC "%{pthread:-D_REENTRANT}"
+ 
+ #define LINK_SPEC "\
++-as-needed \
+ -melf" XLEN_SPEC "lriscv \
+ %{mno-relax:--no-relax} \
+ %{shared} \
+Enable -Wformat and -Wformat-security by default.
+
+--- a/gcc/c-family/c.opt	2016-03-23 18:51:56.000000000 +0100
++++ b/gcc/c-family/c.opt	2016-04-28 23:45:54.063351272 +0200
+@@ -459,7 +459,7 @@ C ObjC C++ ObjC++ Var(warn_format_nonlit
+ Warn about format strings that are not literals.
+ 
+ Wformat-security
+-C ObjC C++ ObjC++ Var(warn_format_security) Warning LangEnabledBy(C ObjC C++ ObjC++,Wformat=, warn_format >= 2, 0)
++C ObjC C++ ObjC++ Var(warn_format_security) Init(1) Warning LangEnabledBy(C ObjC C++ ObjC++,Wformat=, warn_format >= 2, 0)
+ Warn about possible security problems with format functions.
+ 
+ Wformat-signedness
+@@ -475,7 +475,7 @@ C ObjC C++ ObjC++ Var(warn_format_zero_l
+ Warn about zero-length formats.
+ 
+ Wformat=
+-C ObjC C++ ObjC++ Joined RejectNegative UInteger Var(warn_format) Warning LangEnabledBy(C ObjC C++ ObjC++,Wall, 1, 0) IntegerRange(0, 2)
++C ObjC C++ ObjC++ Joined RejectNegative UInteger Var(warn_format) Init(1) Warning LangEnabledBy(C ObjC C++ ObjC++,Wall, 1, 0) IntegerRange(0, 2)
+ Warn about printf/scanf/strftime/strfmon format string anomalies.
+ 
+ Wignored-qualifiers
+Enable -Wtrampolines by default.
+
+--- a/gcc/common.opt
++++ b/gcc/common.opt
+@@ -712,7 +712,7 @@ Common Var(warn_system_headers) Warning
+ Do not suppress warnings from system headers.
+ 
+ Wtrampolines
+-Common Var(warn_trampolines) Warning
++Common Var(warn_trampolines) Init(1) Warning
+ Warn whenever a trampoline is generated.
+ 
+ Wtype-limits
+Disable ssp on -nostdlib, -nodefaultlibs and -ffreestanding 
+Change the buffer size.
+
+--- a/gcc/gcc.c	2017-07-04 09:15:57.740793000 +0200
++++ b/gcc/gcc.c	2018-03-02 13:58:44.387741114 +0100
+@@ -857,6 +857,12 @@ proper position among the other output f
+ #define LINK_GCC_C_SEQUENCE_SPEC "%G %L %G"
+ #endif
+ 
++#ifdef ENABLE_DEFAULT_SSP
++#define NO_SSP_SPEC "%{nostdlib|nodefaultlibs|ffreestanding:-fno-stack-protector} "
++#else
++#define NO_SSP_SPEC ""
++#endif
++
+ #ifndef LINK_SSP_SPEC
+ #ifdef TARGET_LIBC_PROVIDES_SSP
+ #define LINK_SSP_SPEC "%{fstack-protector|fstack-protector-all" \
+@@ -1131,7 +1148,7 @@ static const char *cc1_options =
+  %{-version:--version}\
+  %{-help=*:--help=%*}\
+  %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}}\
+- %{fsyntax-only:-o %j} %{-param*}\
++ %{fsyntax-only:-o %j} %{-param*} " NO_SSP_SPEC "\
+  %{coverage:-fprofile-arcs -ftest-coverage}\
+  %{fprofile-arcs|fprofile-generate*|coverage:\
+    %{!fprofile-update=singel:\
+--- a/gcc/params.def	2016-03-30 09:47:40.000000000 +0200
++++ b/gcc/params.def	2016-09-19 12:56:58.443179039 +0200
+@@ -673,7 +673,7 @@ DEFPARAM (PARAM_INTEGER_SHARE_LIMIT,
+ DEFPARAM (PARAM_SSP_BUFFER_SIZE,
+ 	  "ssp-buffer-size",
+ 	  "The lower bound for a buffer to be considered for stack smashing protection.",
+-	  8, 1, 0)
++	  4, 1, 0)
+ 
+ DEFPARAM (PARAM_MIN_SIZE_FOR_STACK_SHARING,
+ 	  "min-size-for-stack-sharing",
+Ensure that msgfmt doesn't encounter problems during gcc bootstrapping.
+
+Solves error messages like the following:
+
+msgfmt: /var/tmp/portage/sys-devel/gcc-4.1.2/work/build/./gcc/libgcc_s.so.1: version `GCC_4.2.0' not found (required by /usr/lib/gcc/x86_64-pc-linux-gnu/4.5.3/libstdc++.so.6)
+
+The libgcc_s.so used during build doesn't satisfy the needs of the
+libstdc++.so that msgfmt is linked against. On the other hand, msgfmt
+is used as a stand-alone application here, and what library it uses
+behind the scenes is of no concern to the gcc build process.
+Therefore, simply invoking it "as usual", i.e. without any special
+library path, will make it work as expected here.
+
+2011-09-19 Martin von Gagern
+
+References:
+https://bugs.gentoo.org/372377
+https://bugs.gentoo.org/295480
+
+--- gcc-4.1.2.orig/libstdc++-v3/po/Makefile.am
++++ gcc-4.1.2/libstdc++-v3/po/Makefile.am
+@@ -39,6 +39,7 @@ MSGFMT = msgfmt
+ EXTRA_DIST = string_literals.cc POTFILES.in $(PACKAGE).pot $(LOCALE_IN)
+ 
+ .po.mo:
++	env --unset=LD_LIBRARY_PATH \
+ 	$(MSGFMT) -o $@ $<
+ 
+ all-local: all-local-$(USE_NLS)
+--- gcc-4.1.2.orig/libstdc++-v3/po/Makefile.in
++++ gcc-4.1.2/libstdc++-v3/po/Makefile.in
+@@ -419,6 +419,7 @@ uninstall-am: uninstall-info-am
+ 
+ 
+ .po.mo:
++	env --unset=LD_LIBRARY_PATH \
+ 	$(MSGFMT) -o $@ $<
+ 
+ all-local: all-local-$(USE_NLS)
+2008-07-25  Magnus Granberg  <zorry@ume.nu>
+
+	* include/libiberty.h (asprintf): Don't declare if defined as a macro
+
+--- a/include/libiberty.h
++++ b/include/libiberty.h
+@@ -609,8 +609,11 @@ extern int pwait (int, int *, int);
+ /* Like sprintf but provides a pointer to malloc'd storage, which must
+    be freed by the caller.  */
+ 
++/* asprintf may be declared as a macro by glibc with __USE_FORTIFY_LEVEL.  */
++#ifndef asprintf
+ extern int asprintf (char **, const char *, ...) ATTRIBUTE_PRINTF_2;
+ #endif
++#endif
+ 
+ #if !HAVE_DECL_VASPRINTF
+ /* Like vsprintf but provides a pointer to malloc'd storage, which
+--- a/libiberty/Makefile.in
++++ b/libiberty/Makefile.in
+@@ -246,6 +246,7 @@ $(TARGETLIB): $(REQUIRED_OFILES) $(EXTRA_OFILES) $(LIBOBJS)
+ 	  $(AR) $(AR_FLAGS) $(TARGETLIB) \
+ 	    $(REQUIRED_OFILES) $(EXTRA_OFILES) $(LIBOBJS); \
+ 	  $(RANLIB) $(TARGETLIB); \
++	  cp $(TARGETLIB) ../ ; \
+ 	  cd ..; \
+ 	else true; fi
+ 
+https://bugs.gentoo.org/508852
+https://gcc.gnu.org/PR61164
+
+2014-04-27  Magnus Granberg  <zorry@gentoo.org>
+
+	#508852
+	* libitm/configure.tgt: Disable FORTIFY
+
+--- a/libitm/configure.tgt
++++ b/libitm/configure.tgt
+@@ -43,6 +43,16 @@ if test "$gcc_cv_have_tls" = yes ; then
+   esac
+ fi
+ 
++# FIXME: error: inlining failed in call to always_inline 
++# ‘int vfprintf(FILE*, const char*, __va_list_tag*)’
++# : function body can be overwritten at link time
++# Disable Fortify in libitm for now. #508852
++case "${target}" in
++    *-*-linux*)
++	XCFLAGS="${XCFLAGS} -U_FORTIFY_SOURCE"
++	;;
++esac
++
+ # Map the target cpu to an ARCH sub-directory.  At the same time,
+ # work out any special compilation flags as necessary.
+ case "${target_cpu}" in
+libatomic build failure if configured with --disable-dependency-tracking
+load_n.c:115:1: fatal error: opening dependency file .deps/load_1_.lo.Ppo: No such file or directory
+
+https://bugs.gentoo.org/463463
+http://gcc.gnu.org/PR55930
+
+--- a/libatomic/Makefile.in
++++ b/libatomic/Makefile.in
+@@ -298,7 +298,8 @@ PAT_N = $(word 2,$(PAT_SPLIT))
+ PAT_S = $(word 3,$(PAT_SPLIT))
+ IFUNC_DEF = -DIFUNC_ALT=$(PAT_S)
+ IFUNC_OPT = $(word $(PAT_S),$(IFUNC_OPTIONS))
+-M_DEPS = -MT $@ -MD -MP -MF $(DEPDIR)/$(@F).Ppo
++@AMDEP_TRUE@M_DEPS = -MT $@ -MD -MP -MF $(DEPDIR)/$(@F).Ppo
++@AMDEP_FALSE@M_DEPS =
+ M_SIZE = -DN=$(PAT_N)
+ M_IFUNC = $(if $(PAT_S),$(IFUNC_DEF) $(IFUNC_OPT))
+ M_FILE = $(PAT_BASE)_n.c
+From 9e3eab51e518018d9d99b3123598b1e2322a6af3 Mon Sep 17 00:00:00 2001
+From: Szabolcs Nagy <nsz@port70.net>
+Date: Sat, 24 Oct 2015 20:09:53 +0000
+Subject: [PATCH 3/6] libgcc_s
+
+---
+ gcc/config/i386/i386.c       | 4 ++--
+ libgcc/config/i386/cpuinfo.c | 6 +++---
+ libgcc/config/i386/t-linux   | 2 +-
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
+index 3d044e8..82523e1 100644
+--- a/gcc/config/i386/i386.c
++++ b/gcc/config/i386/i386.c
+@@ -40269,10 +40269,10 @@ ix86_expand_builtin (tree exp, rtx target, rtx subtarget,
+     {
+     case IX86_BUILTIN_CPU_INIT:
+       {
+-	/* Make it call __cpu_indicator_init in libgcc. */
++	/* Make it call __cpu_indicator_init_local in libgcc.a. */
+ 	tree call_expr, fndecl, type;
+         type = build_function_type_list (integer_type_node, NULL_TREE); 
+-	fndecl = build_fn_decl ("__cpu_indicator_init", type);
++	fndecl = build_fn_decl ("__cpu_indicator_init_local", type);
+ 	call_expr = build_call_expr (fndecl, 0); 
+ 	return expand_expr (call_expr, target, mode, EXPAND_NORMAL);
+       }
+diff --git a/libgcc/config/i386/cpuinfo.c b/libgcc/config/i386/cpuinfo.c
+index 8c2248d..6c82f15 100644
+--- a/libgcc/config/i386/cpuinfo.c
++++ b/libgcc/config/i386/cpuinfo.c
+@@ -485,7 +485,7 @@ __cpu_indicator_init (void)
+   return 0;
+ }
+ 
+-#if defined SHARED && defined USE_ELF_SYMVER
+-__asm__ (".symver __cpu_indicator_init, __cpu_indicator_init@GCC_4.8.0");
+-__asm__ (".symver __cpu_model, __cpu_model@GCC_4.8.0");
++#ifndef SHARED
++int __cpu_indicator_init_local (void)
++  __attribute__ ((weak, alias ("__cpu_indicator_init")));
+ #endif
+diff --git a/libgcc/config/i386/t-linux b/libgcc/config/i386/t-linux
+index 11bb46e..4f47f7b 100644
+--- a/libgcc/config/i386/t-linux
++++ b/libgcc/config/i386/t-linux
+@@ -3,5 +3,5 @@
+ # t-slibgcc-elf-ver and t-linux
+ SHLIB_MAPFILES = libgcc-std.ver $(srcdir)/config/i386/libgcc-glibc.ver
+ 
+-HOST_LIBGCC2_CFLAGS += -mlong-double-80 -DUSE_ELF_SYMVER $(CET_FLAGS)
++HOST_LIBGCC2_CFLAGS += -mlong-double-80 $(CET_FLAGS)
+ CRTSTUFF_T_CFLAGS += $(CET_FLAGS)
+-- 
+2.8.1
+
+From b6015aca9c9cc83739fd0ed637a835119b2c4e34 Mon Sep 17 00:00:00 2001
+From: Szabolcs Nagy <nsz@port70.net>
+Date: Sat, 7 Nov 2015 02:08:05 +0000
+Subject: [PATCH 5/6] nopie
+
+---
+ gcc/configure    | 27 +++++++++++++++++++++++++++
+ gcc/configure.ac | 13 +++++++++++++
+ 2 files changed, 40 insertions(+)
+
+diff --git a/gcc/configure b/gcc/configure
+index 1c6e340..7e8b5d6 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -29390,6 +29390,33 @@ fi
+ $as_echo "$gcc_cv_no_pie" >&6; }
+ if test "$gcc_cv_no_pie" = "yes"; then
+   NO_PIE_FLAG="-no-pie"
++else
++  # Check if -nopie works.
++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for -nopie option" >&5
++$as_echo_n "checking for -nopie option... " >&6; }
++if test "${gcc_cv_nopie+set}" = set; then :
++  $as_echo_n "(cached) " >&6
++else
++  saved_LDFLAGS="$LDFLAGS"
++     LDFLAGS="$LDFLAGS -nopie"
++     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++int main(void) {return 0;}
++_ACEOF
++if ac_fn_cxx_try_link "$LINENO"; then :
++  gcc_cv_nopie=yes
++else
++  gcc_cv_nopie=no
++fi
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
++     LDFLAGS="$saved_LDFLAGS"
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $gcc_cv_nopie" >&5
++$as_echo "$gcc_cv_nopie" >&6; }
++  if test "$gcc_cv_nopie" = "yes"; then
++    NO_PIE_FLAG="-nopie"
++  fi
+ fi
+ 
+ 
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index 6c1dcd9..0ca7647 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -6098,6 +6098,19 @@ AC_CACHE_CHECK([for -no-pie option],
+    LDFLAGS="$saved_LDFLAGS"])
+ if test "$gcc_cv_no_pie" = "yes"; then
+   NO_PIE_FLAG="-no-pie"
++else
++  # Check if -nopie works.
++  AC_CACHE_CHECK([for -nopie option],
++    [gcc_cv_nopie],
++    [saved_LDFLAGS="$LDFLAGS"
++     LDFLAGS="$LDFLAGS -nopie"
++     AC_LINK_IFELSE([int main(void) {return 0;}],
++       [gcc_cv_nopie=yes],
++       [gcc_cv_nopie=no])
++     LDFLAGS="$saved_LDFLAGS"])
++  if test "$gcc_cv_nopie" = "yes"; then
++    NO_PIE_FLAG="-nopie"
++  fi
+ fi
+ AC_SUBST([NO_PIE_FLAG])
+ 
+-- 
+2.8.1
+
+diff --git a/libffi/closures.c.orig b/libffi/closures.c
+index 721ff00..22a699c 100644
+--- a/libffi/src/closures.c.orig
++++ b/libffi/src/closures.c
+@@ -34,7 +34,7 @@
+ #include <ffi_common.h>
+
+ #if !FFI_MMAP_EXEC_WRIT && !FFI_EXEC_TRAMPOLINE_TABLE
+-# if __gnu_linux__ && !defined(__ANDROID__)
++# if __linux__ && !defined(__ANDROID__)
+ /* This macro indicates it may be forbidden to map anonymous memory
+    with both write and execute permission.  Code compiled when this
+    option is defined will attempt to map such pages once, but if it
+diff --git a/gcc/ada/adaint.c b/gcc/ada/adaint.c
+index 3b0aea9..ee0bb69 100644
+--- a/gcc/ada/adaint.c
++++ b/gcc/ada/adaint.c
+@@ -76,6 +76,11 @@
+ #include <sys/param.h>
+ #include <sys/pstat.h>
+ #endif
++ 
++#if defined (linux)
++#define _GNU_SOURCE 1
++#include <sched.h>
++#endif
+ 
+ #ifdef __PikeOS__
+ #define __BSD_VISIBLE 1
+@@ -3255,7 +3260,6 @@ __gnat_lwp_self (void)
+ #endif
+ 
+ #if defined (__linux__)
+-#include <sched.h>
+ 
+ /* glibc versions earlier than 2.7 do not define the routines to handle
+    dynamically allocated CPU sets. For these targets, we use the static
+@@ -3265,7 +3269,7 @@ __gnat_lwp_self (void)
+ 
+ /* Dynamic cpu sets */
+ 
+-cpu_set_t *
++void *
+ __gnat_cpu_alloc (size_t count)
+ {
+   return CPU_ALLOC (count);
+@@ -3278,33 +3282,33 @@ __gnat_cpu_alloc_size (size_t count)
+ }
+ 
+ void
+-__gnat_cpu_free (cpu_set_t *set)
++__gnat_cpu_free (void *set)
+ {
+-  CPU_FREE (set);
++  CPU_FREE ((cpu_set_t *) set);
+ }
+ 
+ void
+-__gnat_cpu_zero (size_t count, cpu_set_t *set)
++__gnat_cpu_zero (size_t count, void *set)
+ {
+-  CPU_ZERO_S (count, set);
++  CPU_ZERO_S (count, (cpu_set_t *) set);
+ }
+ 
+ void
+-__gnat_cpu_set (int cpu, size_t count, cpu_set_t *set)
++__gnat_cpu_set (int cpu, size_t count, void *set)
+ {
+   /* Ada handles CPU numbers starting from 1, while C identifies the first
+      CPU by a 0, so we need to adjust. */
+-  CPU_SET_S (cpu - 1, count, set);
++  CPU_SET_S (cpu - 1, count, (cpu_set_t *) set);
+ }
+ 
+ #else /* !CPU_ALLOC */
+ 
+ /* Static cpu sets */
+ 
+-cpu_set_t *
++void *
+ __gnat_cpu_alloc (size_t count ATTRIBUTE_UNUSED)
+ {
+-  return (cpu_set_t *) xmalloc (sizeof (cpu_set_t));
++  return xmalloc (sizeof (cpu_set_t));
+ }
+ 
+ size_t
+@@ -3314,23 +3318,23 @@ __gnat_cpu_alloc_size (size_t count ATTRIBUTE_UNUSED)
+ }
+ 
+ void
+-__gnat_cpu_free (cpu_set_t *set)
++__gnat_cpu_free (void *set)
+ {
+   free (set);
+ }
+ 
+ void
+-__gnat_cpu_zero (size_t count ATTRIBUTE_UNUSED, cpu_set_t *set)
++__gnat_cpu_zero (size_t count ATTRIBUTE_UNUSED, void *set)
+ {
+-  CPU_ZERO (set);
++  CPU_ZERO ((cpu_set_t *) set);
+ }
+ 
+ void
+-__gnat_cpu_set (int cpu, size_t count ATTRIBUTE_UNUSED, cpu_set_t *set)
++__gnat_cpu_set (int cpu, size_t count ATTRIBUTE_UNUSED, void *set)
+ {
+   /* Ada handles CPU numbers starting from 1, while C identifies the first
+      CPU by a 0, so we need to adjust. */
+-  CPU_SET (cpu - 1, set);
++  CPU_SET (cpu - 1, (cpu_set_t *) set);
+ }
+ #endif /* !CPU_ALLOC */
+ #endif /* __linux__ */
+diff --git a/gcc/ada/adaint.h b/gcc/ada/adaint.h
+index 0d12f7e..a063b47 100644
+--- a/gcc/ada/adaint.h
++++ b/gcc/ada/adaint.h
+@@ -316,13 +316,11 @@ extern void   *__gnat_lwp_self			   (void);
+ 
+ /* Routines for interface to required CPU set primitives */
+ 
+-#include <sched.h>
+-
+-extern cpu_set_t *__gnat_cpu_alloc                 (size_t);
++extern void * __gnat_cpu_alloc                 (size_t);
+ extern size_t __gnat_cpu_alloc_size                (size_t);
+-extern void   __gnat_cpu_free                  (cpu_set_t *);
+-extern void   __gnat_cpu_zero                      (size_t, cpu_set_t *);
+-extern void   __gnat_cpu_set                       (int, size_t, cpu_set_t *);
++extern void   __gnat_cpu_free                  (void *);
++extern void   __gnat_cpu_zero                      (size_t, void *);
++extern void   __gnat_cpu_set                       (int, size_t, void *);
+ #endif
+ 
+ #if defined (_WIN32)
+diff --git a/gcc/ada/terminals.c b/gcc/ada/terminals.c
+index 7025f57..207b50d 100644
+--- a/gcc/ada/terminals.c
++++ b/gcc/ada/terminals.c
+@@ -1108,13 +1108,6 @@ __gnat_setup_winsize (void *desc, int rows, int columns)
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+-/* On some system termio is either absent or including it will disable termios
+-   (HP-UX) */
+-#if !defined (__hpux__) && !defined (BSD) && !defined (__APPLE__) \
+-  && !defined (__rtems__) && !defined (__QNXNTO__)
+-#   include <termio.h>
+-#endif
+-
+ #include <sys/ioctl.h>
+ #include <termios.h>
+ #include <fcntl.h>
+diff --git a/gcc/ada/gcc-interface/Makefile.in b/gcc/ada/gcc-interface/Makefile.in
+index ebb955e..08cfbee 100644
+--- a/gcc/ada/gcc-interface/Makefile.in
++++ b/gcc/ada/gcc-interface/Makefile.in
+@@ -1028,7 +1028,7 @@ ifeq ($(strip $(filter-out %86 linux%,$(target_cpu) $(target_os))),)
+   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+   g-sercom.adb<libgnat/g-sercom__linux.adb \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   a-exetim.adb<libgnarl/a-exetim__posix.adb \
+   a-exetim.ads<libgnarl/a-exetim__default.ads \
+   s-linux.ads<libgnarl/s-linux.ads \
+@@ -1545,7 +1545,7 @@ ifeq ($(strip $(filter-out powerpc% linux%,$(target_cpu) $(target_os))),)
+   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
+   g-sercom.adb<libgnat/g-sercom__linux.adb \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   $(ATOMICS_TARGET_PAIRS) \
+   $(ATOMICS_BUILTINS_TARGET_PAIRS) \
+   system.ads<libgnat/system-linux-ppc.ads
+@@ -1574,7 +1574,7 @@ ifeq ($(strip $(filter-out powerpc% linux%,$(target_cpu) $(target_os))),)
+ endif
+ 
+ # ARM linux, GNU eabi
+-ifeq ($(strip $(filter-out arm% linux-gnueabi%,$(target_cpu) $(target_os))),)
++ifeq ($(strip $(filter-out arm% linux-gnueabi% linux-musleabi% linux-muslgnueabi%,$(target_cpu) $(target_os))),)
+   LIBGNAT_TARGET_PAIRS = \
+   a-intnam.ads<libgnarl/a-intnam__linux.ads \
+   s-inmaop.adb<libgnarl/s-inmaop__posix.adb \
+@@ -1774,7 +1774,7 @@ ifeq ($(strip $(filter-out %ia64 linux%,$(target_cpu) $(target_os))),)
+   s-taspri.ads<libgnarl/s-taspri__posix-noaltstack.ads \
+   g-sercom.adb<libgnat/g-sercom__linux.adb \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   $(ATOMICS_TARGET_PAIRS) \
+   $(ATOMICS_BUILTINS_TARGET_PAIRS) \
+   system.ads<libgnat/system-linux-ia64.ads
+@@ -1871,7 +1871,7 @@ ifeq ($(strip $(filter-out %x86_64 linux%,$(target_cpu) $(target_os))),)
+   s-taspri.ads<libgnarl/s-taspri__posix.ads \
+   g-sercom.adb<libgnat/g-sercom__linux.adb \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   $(ATOMICS_TARGET_PAIRS) \
+   $(X86_64_TARGET_PAIRS) \
+   system.ads<libgnat/system-linux-x86.ads
+diff --git a/gcc/ada/terminals.c b/gcc/ada/terminals.c
+index 207b50d..bd3a02c 100644
+--- a/gcc/ada/terminals.c
++++ b/gcc/ada/terminals.c
+@@ -1152,7 +1152,7 @@ __gnat_setup_winsize (void *desc, int rows, int columns)
+ #if defined (__APPLE__) || defined (BSD)
+ #define USE_OPENPTY
+ #elif defined (__linux__)
+-#define USE_GETPT
++#define USE_POSIX_OPENPT
+ #elif defined (__sun__)
+ #define USE_CLONE_DEVICE "/dev/ptmx"
+ #elif defined (_AIX)
+@@ -1201,8 +1201,8 @@ allocate_pty_desc (pty_desc **desc) {
+    int  master_fd   = -1;
+    char *slave_name = NULL;
+ 
+-#ifdef USE_GETPT
+-  master_fd = getpt ();
++#ifdef USE_POSIX_OPENPT
++  master_fd = posix_openpt(O_RDWR | O_NOCTTY);
+ #elif defined (USE_OPENPTY)
+   status = openpty (&master_fd, &slave_fd, NULL, NULL, NULL);
+ #elif defined (USE_CLONE_DEVICE)
+Index: b/gcc/ada/link.c
+===================================================================
+--- a/gcc/ada/link.c
++++ b/gcc/ada/link.c
+@@ -105,9 +105,9 @@
+ 
+ #elif defined (__FreeBSD__)
+ const char *__gnat_object_file_option = "-Wl,@";
+-const char *__gnat_run_path_option = "-Wl,-rpath,";
+-char __gnat_shared_libgnat_default = STATIC;
+-char __gnat_shared_libgcc_default = STATIC;
++const char *__gnat_run_path_option = "";
++char __gnat_shared_libgnat_default = SHARED;
++char __gnat_shared_libgcc_default = SHARED;
+ int __gnat_link_max = 8192;
+ unsigned char __gnat_objlist_file_supported = 1;
+ const char *__gnat_object_library_extension = ".a";
+@@ -127,9 +127,9 @@
+ 
+ #elif defined (linux) || defined(__GLIBC__)
+ const char *__gnat_object_file_option = "-Wl,@";
+-const char *__gnat_run_path_option = "-Wl,-rpath,";
+-char __gnat_shared_libgnat_default = STATIC;
+-char __gnat_shared_libgcc_default = STATIC;
++const char *__gnat_run_path_option = "";
++char __gnat_shared_libgnat_default = SHARED;
++char __gnat_shared_libgcc_default = SHARED;
+ int __gnat_link_max = 8192;
+ unsigned char __gnat_objlist_file_supported = 1;
+ const char *__gnat_object_library_extension = ".a";
+--- gcc-4.8.1/Makefile.in.orig
++++ gcc-4.8.1/Makefile.in
+@@ -169,6 +169,7 @@
+ # built for the build system to override those in BASE_FLAGS_TO_PASSS.
+ EXTRA_BUILD_FLAGS = \
+ 	CFLAGS="$(CFLAGS_FOR_BUILD)" \
++	CXXFLAGS="$(CXXFLAGS_FOR_BUILD)" \
+ 	LDFLAGS="$(LDFLAGS_FOR_BUILD)"
+ 
+ # This is the list of directories to built for the host system.
+--- gcc-4.9.2/gcc/config/linux.h.orig	2015-03-09 13:27:13.289736710 +0000
++++ gcc-4.9.2/gcc/config/linux.h	2015-03-09 13:29:32.295625046 +0000
+@@ -146,6 +146,8 @@
+ 
+ #ifdef NATIVE_SYSTEM_HEADER_DIR
+ #define INCLUDE_DEFAULTS_MUSL_NATIVE			\
++    { NATIVE_SYSTEM_HEADER_DIR "/fortify", 0, 0, 0, 1, 2 },	\
++    { NATIVE_SYSTEM_HEADER_DIR "/fortify", 0, 0, 0, 1, 0 },	\
+     { NATIVE_SYSTEM_HEADER_DIR, 0, 0, 0, 1, 2 },	\
+     { NATIVE_SYSTEM_HEADER_DIR, 0, 0, 0, 1, 0 },
+ #else
+Author: Timo Teräs <timo.teras@iki.fi>
+
+Alpine musl package provides libssp_nonshared.a. We link to it unconditionally,
+as otherwise we get link failures if some objects are -fstack-protector built
+and final link happens with -fno-stack-protector. This seems to be the common
+case when bootstrapping gcc, the piepatches do not seem to fully fix the
+crosstoolchain and  bootstrap sequence wrt. stack-protector flag usage.
+
+--- gcc-6.1.0/gcc/gcc.c.orig
++++ gcc-6.1.0/gcc/gcc.c
+@@ -870,8 +870,7 @@
+ 
+ #ifndef LINK_SSP_SPEC
+ #ifdef TARGET_LIBC_PROVIDES_SSP
+-#define LINK_SSP_SPEC "%{fstack-protector|fstack-protector-all" \
+-		       "|fstack-protector-strong|fstack-protector-explicit:}"
++#define LINK_SSP_SPEC "-lssp_nonshared"
+ #else
+ #define LINK_SSP_SPEC "%{fstack-protector|fstack-protector-all" \
+ 		       "|fstack-protector-strong|fstack-protector-explicit" \
+# DP: Use --push-state/--pop-state for gold as well when linking libtsan.
+
+Index: b/gcc/gcc.c
+===================================================================
+--- a/gcc/gcc.c
++++ b/gcc/gcc.c
+@@ -693,10 +693,10 @@ proper position among the other output f
+ #define LIBASAN_SPEC STATIC_LIBASAN_LIBS
+ #elif defined(HAVE_LD_STATIC_DYNAMIC)
+ #define LIBASAN_SPEC "%{static-libasan:" LD_STATIC_OPTION "}" \
+-		     " %{!static-libasan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " %{!static-libasan:--push-state --no-as-needed}" \
+ 		     " -lasan " \
+ 		     " %{static-libasan:" LD_DYNAMIC_OPTION "}" \
+-		     " %{!static-libasan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
++		     " %{!static-libasan:--pop-state}" \
+ 		     STATIC_LIBASAN_LIBS
+ #else
+ #define LIBASAN_SPEC "-lasan" STATIC_LIBASAN_LIBS
+@@ -714,10 +714,10 @@ proper position among the other output f
+ #define LIBTSAN_SPEC STATIC_LIBTSAN_LIBS
+ #elif defined(HAVE_LD_STATIC_DYNAMIC)
+ #define LIBTSAN_SPEC "%{static-libtsan:" LD_STATIC_OPTION "}" \
+-		     " %{!static-libtsan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " %{!static-libtsan:--push-state --no-as-needed}" \
+ 		     " -ltsan " \
+ 		     " %{static-libtsan:" LD_DYNAMIC_OPTION "}" \
+-		     " %{!static-libtsan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
++		     " %{!static-libtsan:--pop-state}" \
+ 		     STATIC_LIBTSAN_LIBS
+ #else
+ #define LIBTSAN_SPEC "-ltsan" STATIC_LIBTSAN_LIBS
+@@ -735,10 +735,10 @@ proper position among the other output f
+ #define LIBLSAN_SPEC STATIC_LIBLSAN_LIBS
+ #elif defined(HAVE_LD_STATIC_DYNAMIC)
+ #define LIBLSAN_SPEC "%{static-liblsan:" LD_STATIC_OPTION "}" \
+-		     " %{!static-liblsan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " %{!static-liblsan:--push-state --no-as-needed}" \
+ 		     " -llsan " \
+ 		     " %{static-liblsan:" LD_DYNAMIC_OPTION "}" \
+-		     " %{!static-liblsan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
++		     " %{!static-liblsan:--pop-state}" \
+ 		     STATIC_LIBLSAN_LIBS
+ #else
+ #define LIBLSAN_SPEC "-llsan" STATIC_LIBLSAN_LIBS
+@@ -754,10 +754,10 @@ proper position among the other output f
+   " %{static-libubsan|static:%:include(libsanitizer.spec)%(link_libubsan)}"
+ #ifdef HAVE_LD_STATIC_DYNAMIC
+ #define LIBUBSAN_SPEC "%{static-libubsan:" LD_STATIC_OPTION "}" \
+-		     " %{!static-libubsan:%{!fuse-ld=gold:--push-state }--no-as-needed}" \
++		     " %{!static-libubsan:--push-state --no-as-needed}" \
+ 		     " -lubsan " \
+ 		     " %{static-libubsan:" LD_DYNAMIC_OPTION "}" \
+-		     " %{!static-libubsan:%{fuse-ld=gold:--as-needed;:--pop-state}}" \
++		     " %{!static-libubsan:--pop-state}" \
+ 		     STATIC_LIBUBSAN_LIBS
+ #else
+ #define LIBUBSAN_SPEC "-lubsan" STATIC_LIBUBSAN_LIBS
+From: Jakub Jelinek <jakub@redhat.com>
+Subject: [PATCH] Use --push-state --as-needed and --pop-state instead of --as-needed and --no-as-needed for libgcc
+
+As discussed, using --as-needed and --no-as-needed is dangerous, because
+it results in --no-as-needed even for libraries after -lgcc_s, even when the
+default is --as-needed or --as-needed has been specified earlier on the
+command line.
+
+If the linker supports --push-state/--pop-state, we should IMHO use it.
+
+2018-04-11  Jakub Jelinek  <jakub@redhat.com>
+
+	* configure.ac (LD_AS_NEEDED_OPTION, LD_NO_AS_NEEDED_OPTION): Use
+	--push-state --as-needed and --pop-state instead of --as-needed and
+	--no-as-needed if ld supports it.
+	* configure: Regenerated.
+
+Index: b/gcc/configure.ac
+===================================================================
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -5518,11 +5518,21 @@ if test $in_tree_ld = yes ; then
+   if test "$gcc_cv_gld_major_version" -eq 2 -a "$gcc_cv_gld_minor_version" -ge 16 -o "$gcc_cv_gld_major_version" -gt 2 \
+      && test $in_tree_ld_is_elf = yes; then
+     gcc_cv_ld_as_needed=yes
++    if test "$gcc_cv_gld_major_version" -eq 2 -a "$gcc_cv_gld_minor_version" -ge 28; then
++      gcc_cv_ld_as_needed_option='--push-state --as-needed'
++      gcc_cv_ld_no_as_needed_option='--pop-state'
++    fi
+   fi
+ elif test x$gcc_cv_ld != x; then
+   # Check if linker supports --as-needed and --no-as-needed options
+   if $gcc_cv_ld --help 2>&1 | grep as-needed > /dev/null; then
+     gcc_cv_ld_as_needed=yes
++    if $gcc_cv_ld --help 2>&1 | grep push-state > /dev/null; then
++      if $gcc_cv_ld --help 2>&1 | grep pop-state > /dev/null; then
++	gcc_cv_ld_as_needed_option='--push-state --as-needed'
++	gcc_cv_ld_no_as_needed_option='--pop-state'
++      fi
++    fi
+   fi
+   case "$target:$gnu_ld" in
+     *-*-solaris2*:no)
+From b8c4e45d052adc247341066f748421743704b481 Mon Sep 17 00:00:00 2001
+From: Nils Andreas Svee <me@lochnair.net>
+Date: Thu, 21 Dec 2017 03:14:33 +0100
+Subject: [PATCH] Pure 64-bit MIPS
+
+---
+ gcc/config/mips/mips.h    | 8 ++++----
+ gcc/config/mips/t-linux64 | 6 +++---
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/gcc/config/mips/mips.h b/gcc/config/mips/mips.h
+index 803ab98e7..afd74752f 100644
+--- a/gcc/config/mips/mips.h
++++ b/gcc/config/mips/mips.h
+@@ -3330,11 +3330,11 @@ struct GTY(())  machine_function {
+ /* If we are *not* using multilibs and the default ABI is not ABI_32 we
+    need to change these from /lib and /usr/lib.  */
+ #if MIPS_ABI_DEFAULT == ABI_N32
+-#define STANDARD_STARTFILE_PREFIX_1 "/lib32/"
+-#define STANDARD_STARTFILE_PREFIX_2 "/usr/lib32/"
++#define STANDARD_STARTFILE_PREFIX_1 "/lib/"
++#define STANDARD_STARTFILE_PREFIX_2 "/usr/lib/"
+ #elif MIPS_ABI_DEFAULT == ABI_64
+-#define STANDARD_STARTFILE_PREFIX_1 "/lib64/"
+-#define STANDARD_STARTFILE_PREFIX_2 "/usr/lib64/"
++#define STANDARD_STARTFILE_PREFIX_1 "/lib/"
++#define STANDARD_STARTFILE_PREFIX_2 "/usr/lib/"
+ #endif
+ 
+ /* Load store bonding is not supported by micromips and fix_24k.  The
+diff --git a/gcc/config/mips/t-linux64 b/gcc/config/mips/t-linux64
+index 16c8adf85..bb46204db 100644
+--- a/gcc/config/mips/t-linux64
++++ b/gcc/config/mips/t-linux64
+@@ -21,6 +21,6 @@ MULTILIB_DIRNAMES = n32 32 64
+ MIPS_EL = $(if $(filter %el, $(firstword $(subst -, ,$(target)))),el)
+ MIPS_SOFT = $(if $(strip $(filter MASK_SOFT_FLOAT_ABI, $(target_cpu_default)) $(filter soft, $(with_float))),soft)
+ MULTILIB_OSDIRNAMES = \
+-	../lib32$(call if_multiarch,:mips64$(MIPS_EL)-linux-gnuabin32$(MIPS_SOFT)) \
+-	../lib$(call if_multiarch,:mips$(MIPS_EL)-linux-gnu$(MIPS_SOFT)) \
+-	../lib64$(call if_multiarch,:mips64$(MIPS_EL)-linux-gnuabi64$(MIPS_SOFT))
++        ../lib \
++        ../lib32 \
++        ../lib
+-- 
+2.15.1
+
+--- ./gcc/config/i386/t-linux64.orig	2013-01-14 16:32:37.000000000 +0000
++++ ./gcc/config/i386/t-linux64	2013-04-22 06:12:32.984439677 +0000
+@@ -34,6 +34,6 @@
+ comma=,
+ MULTILIB_OPTIONS    = $(subst $(comma),/,$(TM_MULTILIB_CONFIG))
+ MULTILIB_DIRNAMES   = $(patsubst m%, %, $(subst /, ,$(MULTILIB_OPTIONS)))
+-MULTILIB_OSDIRNAMES = m64=../lib64$(call if_multiarch,:x86_64-linux-gnu)
+-MULTILIB_OSDIRNAMES+= m32=$(if $(wildcard $(shell echo $(SYSTEM_HEADER_DIR))/../../usr/lib32),../lib32,../lib)$(call if_multiarch,:i386-linux-gnu)
++MULTILIB_OSDIRNAMES = m64=../lib
++MULTILIB_OSDIRNAMES+= m32=../lib32
+ MULTILIB_OSDIRNAMES+= mx32=../libx32$(call if_multiarch,:x86_64-linux-gnux32)
+--- ./gcc/config/aarch64/t-aarch64-linux.orig
++++ ./gcc/config/aarch64/t-aarch64-linux
+@@ -22,7 +22,7 @@
+ LIB1ASMFUNCS = _aarch64_sync_cache_range
+ 
+ AARCH_BE = $(if $(findstring TARGET_BIG_ENDIAN_DEFAULT=1, $(tm_defines)),_be)
+-MULTILIB_OSDIRNAMES = mabi.lp64=../lib64$(call if_multiarch,:aarch64$(AARCH_BE)-linux-gnu)
++MULTILIB_OSDIRNAMES = mabi.lp64=../lib
+ MULTIARCH_DIRNAME = $(call if_multiarch,aarch64$(AARCH_BE)-linux-gnu)
+ 
+ MULTILIB_OSDIRNAMES += mabi.ilp32=../libilp32
+--- ./gcc/config/s390/t-linux64.orig
++++ ./gcc/config/s390/t-linux64
+@@ -7,5 +7,5 @@
+ MULTILIB_OPTIONS = m64/m31
+ MULTILIB_DIRNAMES = 64 32
+-MULTILIB_OSDIRNAMES = ../lib64$(call if_multiarch,:s390x-linux-gnu)
+-MULTILIB_OSDIRNAMES += $(if $(wildcard $(shell echo $(SYSTEM_HEADER_DIR))/../../usr/lib32),../lib32,../lib)$(call if_multiarch,:s390-linux-gnu)
++MULTILIB_OSDIRNAMES = m64=../lib
++MULTILIB_OSDIRNAMES+= m32=../lib32
+
+--- ./gcc/config/rs6000/t-linux.orig
++++ ./gcc/config/rs6000/t-linux
+@@ -2,7 +2,8 @@
+ # or soft-float.
+ ifeq (,$(filter $(with_cpu),$(SOFT_FLOAT_CPUS))$(findstring soft,$(with_float)))
+ ifneq (,$(findstring powerpc64,$(target)))
+-MULTILIB_OSDIRNAMES := .=../lib64$(call if_multiarch,:powerpc64-linux-gnu)
++MULTILIB_OSDIRNAMES := m64=../lib
++MULTILIB_OSDIRNAMES += m32=../lib32
+ else
+ ifneq (,$(findstring spe,$(target)))
+ MULTIARCH_DIRNAME := powerpc-linux-gnuspe$(if $(findstring 8548,$(with_cpu)),,v1)
+@@ -14,7 +15,8 @@
+ MULTIARCH_DIRNAME := $(subst -linux,le-linux,$(MULTIARCH_DIRNAME))
+ endif
+ ifneq (,$(findstring powerpc64le,$(target)))
+-MULTILIB_OSDIRNAMES := $(subst -linux,le-linux,$(MULTILIB_OSDIRNAMES))
++MULTILIB_OSDIRNAMES := m64=../lib
++MULTILIB_OSDIRNAMES += m32=../lib32
+ endif
+ endif
+ 
+--- ./gcc/config/rs6000/t-linux64.orig
++++ ./gcc/config/rs6000/t-linux64
+@@ -28,8 +28,8 @@
+ MULTILIB_OPTIONS    := m64/m32
+ MULTILIB_DIRNAMES   := 64 32
+ MULTILIB_EXTRA_OPTS := 
+-MULTILIB_OSDIRNAMES := m64=../lib64$(call if_multiarch,:powerpc64-linux-gnu)
+-MULTILIB_OSDIRNAMES += m32=$(if $(wildcard $(shell echo $(SYSTEM_HEADER_DIR))/../../usr/lib32),../lib32,../lib)$(call if_multiarch,:powerpc-linux-gnu)
++MULTILIB_OSDIRNAMES := m64=../lib
++MULTILIB_OSDIRNAMES += m32=../lib32
+ 
+ rs6000-linux.o: $(srcdir)/config/rs6000/rs6000-linux.c
+ 	$(COMPILE) $<
+--- ./gcc/config/rs6000/t-linux64bele.orig
++++ ./gcc/config/rs6000/t-linux64bele
+@@ -2,6 +2,6 @@
+ 
+ MULTILIB_OPTIONS    += mlittle
+ MULTILIB_DIRNAMES   += le
+-MULTILIB_OSDIRNAMES += $(subst =,.mlittle=,$(subst lible32,lib32le,$(subst lible64,lib64le,$(subst lib,lible,$(subst -linux,le-linux,$(MULTILIB_OSDIRNAMES))))))
+-MULTILIB_OSDIRNAMES += $(subst $(if $(findstring 64,$(target)),m64,m32).,,$(filter $(if $(findstring 64,$(target)),m64,m32).mlittle%,$(MULTILIB_OSDIRNAMES)))
++MULTILIB_OSDIRNAMES = m64=../lib
++MULTILIB_OSDIRNAMES+= m32=../lib32
+ MULTILIB_MATCHES    := ${MULTILIB_MATCHES_ENDIAN}
+--- ./gcc/config/rs6000/t-linux64lebe.orig
++++ ./gcc/config/rs6000/t-linux64lebe
+@@ -2,6 +2,6 @@
+ 
+ MULTILIB_OPTIONS    += mbig
+ MULTILIB_DIRNAMES   += be
+-MULTILIB_OSDIRNAMES += $(subst =,.mbig=,$(subst libbe32,lib32be,$(subst libbe64,lib64be,$(subst lib,libbe,$(subst le-linux,-linux,$(MULTILIB_OSDIRNAMES))))))
+-MULTILIB_OSDIRNAMES += $(subst $(if $(findstring 64,$(target)),m64,m32).,,$(filter $(if $(findstring 64,$(target)),m64,m32).mbig%,$(MULTILIB_OSDIRNAMES)))
++MULTILIB_OSDIRNAMES := m64=../lib
++MULTILIB_OSDIRNAMES += m32=../lib32
+ MULTILIB_MATCHES    := ${MULTILIB_MATCHES_ENDIAN}
+Highly inspired by:
+  http://landley.net/hg/aboriginal/file/7e0747a665ab/sources/patches/gcc-core-libgcceh.patch
+
+diff -durN gcc-4.6.0.orig/libgcc/Makefile.in gcc-4.6.0/libgcc/Makefile.in
+--- gcc-4.6.0.orig/libgcc/Makefile.in	2011-01-26 05:19:58.000000000 +0100
++++ gcc-4.6.0/libgcc/Makefile.in	2011-09-12 18:17:12.743718974 +0200
+@@ -772,8 +772,9 @@
+ libgcc_s$(SHLIB_EXT): libunwind$(SHLIB_EXT)
+ endif
+ 
++all: libgcc_eh.a
+ ifeq ($(enable_shared),yes)
+-all: libgcc_eh.a libgcc_s$(SHLIB_EXT)
++all: libgcc_s$(SHLIB_EXT)
+ ifneq ($(LIBUNWIND),)
+ all: libunwind$(SHLIB_EXT)
+ endif
+@@ -950,10 +951,6 @@
+ install-shared:
+ 	$(mkinstalldirs) $(DESTDIR)$(inst_libdir)
+ 
+-	$(INSTALL_DATA) libgcc_eh.a $(DESTDIR)$(inst_libdir)/
+-	chmod 644 $(DESTDIR)$(inst_libdir)/libgcc_eh.a
+-	$(RANLIB) $(DESTDIR)$(inst_libdir)/libgcc_eh.a
+-
+ 	$(subst @multilib_dir@,$(MULTIDIR),$(subst \
+ 		@shlib_base_name@,libgcc_s,$(subst \
+ 		@shlib_slibdir_qual@,$(MULTIOSSUBDIR),$(SHLIB_INSTALL))))
+@@ -968,6 +965,10 @@
+ 	chmod 644 $(DESTDIR)$(inst_libdir)/libgcov.a
+ 	$(RANLIB) $(DESTDIR)$(inst_libdir)/libgcov.a
+ 
++	$(INSTALL_DATA) libgcc_eh.a $(DESTDIR)$(inst_libdir)/
++	chmod 644 $(DESTDIR)$(inst_libdir)/libgcc_eh.a
++	$(RANLIB) $(DESTDIR)$(inst_libdir)/libgcc_eh.a
++
+ 	parts="$(INSTALL_PARTS)";				\
+ 	for file in $$parts; do					\
+ 	  rm -f $(DESTDIR)$(inst_libdir)/$$file;		\
+diff -rup gcc-8.2.0/gcc/ada/libgnarl/s-osinte__linux.ads gcc-8.2.0-new/gcc/ada/libgnarl/s-osinte__linux.ads
+--- gcc-8.2.0/gcc/ada/libgnarl/s-osinte__linux.ads	2018-01-11 00:55:25.000000000 -0800
++++ gcc-8.2.0-new/gcc/ada/libgnarl/s-osinte__linux.ads	2018-11-01 16:16:23.372452951 -0700
+@@ -394,12 +394,6 @@ package System.OS_Interface is
+    PTHREAD_RWLOCK_PREFER_WRITER_NP              : constant := 1;
+    PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP : constant := 2;
+ 
+-   function pthread_rwlockattr_setkind_np
+-     (attr : access pthread_rwlockattr_t;
+-      pref : int) return int;
+-   pragma Import
+-     (C, pthread_rwlockattr_setkind_np, "pthread_rwlockattr_setkind_np");
+-
+    function pthread_rwlock_init
+      (mutex : access pthread_rwlock_t;
+       attr  : access pthread_rwlockattr_t) return int;
+@@ -464,11 +458,6 @@ package System.OS_Interface is
+       protocol : int) return int;
+    pragma Import (C, pthread_mutexattr_setprotocol);
+ 
+-   function pthread_mutexattr_setprioceiling
+-     (attr        : access pthread_mutexattr_t;
+-      prioceiling : int) return int;
+-   pragma Import (C, pthread_mutexattr_setprioceiling);
+-
+    type struct_sched_param is record
+       sched_priority : int;  --  scheduling priority
+    end record;
+diff -rup gcc-8.2.0/gcc/ada/libgnarl/s-taprop__linux.adb gcc-8.2.0-new/gcc/ada/libgnarl/s-taprop__linux.adb
+--- gcc-8.2.0/gcc/ada/libgnarl/s-taprop__linux.adb	2018-01-11 00:55:25.000000000 -0800
++++ gcc-8.2.0-new/gcc/ada/libgnarl/s-taprop__linux.adb	2018-11-13 11:28:36.433964449 -0800
+@@ -202,9 +202,6 @@ package body System.Task_Primitives.Oper
+    pragma Import
+      (C, GNAT_pthread_condattr_setup, "__gnat_pthread_condattr_setup");
+ 
+-   function GNAT_has_cap_sys_nice return C.int;
+-   pragma Import
+-     (C, GNAT_has_cap_sys_nice, "__gnat_has_cap_sys_nice");
+    --  We do not have pragma Linker_Options ("-lcap"); here, because this
+    --  library is not present on many Linux systems. 'libcap' is the Linux
+    --  "capabilities" library, called by __gnat_has_cap_sys_nice.
+@@ -214,38 +211,6 @@ package body System.Task_Primitives.Oper
+    --  Convert Ada priority to Linux priority. Priorities are 1 .. 99 on
+    --  GNU/Linux, so we map 0 .. 98 to 1 .. 99.
+ 
+-   function Get_Ceiling_Support return Boolean;
+-   --  Get the value of the Ceiling_Support constant (see below).
+-   --  Note well: If this function or related code is modified, it should be
+-   --  tested by hand, because automated testing doesn't exercise it.
+-
+-   -------------------------
+-   -- Get_Ceiling_Support --
+-   -------------------------
+-
+-   function Get_Ceiling_Support return Boolean is
+-      Ceiling_Support : Boolean := False;
+-   begin
+-      if Locking_Policy /= 'C' then
+-         return False;
+-      end if;
+-
+-      declare
+-         function geteuid return Integer;
+-         pragma Import (C, geteuid, "geteuid");
+-         Superuser : constant Boolean := geteuid = 0;
+-         Has_Cap : constant C.int := GNAT_has_cap_sys_nice;
+-         pragma Assert (Has_Cap in 0 | 1);
+-      begin
+-         Ceiling_Support := Superuser or else Has_Cap = 1;
+-      end;
+-
+-      return Ceiling_Support;
+-   end Get_Ceiling_Support;
+-
+-   pragma Warnings (Off, "non-static call not allowed in preelaborated unit");
+-   Ceiling_Support : constant Boolean := Get_Ceiling_Support;
+-   pragma Warnings (On, "non-static call not allowed in preelaborated unit");
+    --  True if the locking policy is Ceiling_Locking, and the current process
+    --  has permission to use this policy. The process has permission if it is
+    --  running as 'root', or if the capability was set by the setcap command,
+@@ -348,7 +313,9 @@ package body System.Task_Primitives.Oper
+    -- Init_Mutex --
+    ----------------
+ 
++   pragma Warnings (Off, "formal parameter * is not referenced");
+    function Init_Mutex (L : RTS_Lock_Ptr; Prio : Any_Priority) return C.int is
++   pragma Warnings (On, "formal parameter * is not referenced");
+       Mutex_Attr : aliased pthread_mutexattr_t;
+       Result, Result_2 : C.int;
+ 
+@@ -360,16 +327,7 @@ package body System.Task_Primitives.Oper
+          return Result;
+       end if;
+ 
+-      if Ceiling_Support then
+-         Result := pthread_mutexattr_setprotocol
+-           (Mutex_Attr'Access, PTHREAD_PRIO_PROTECT);
+-         pragma Assert (Result = 0);
+-
+-         Result := pthread_mutexattr_setprioceiling
+-           (Mutex_Attr'Access, Prio_To_Linux_Prio (Prio));
+-         pragma Assert (Result = 0);
+-
+-      elsif Locking_Policy = 'I' then
++      if Locking_Policy = 'I' then
+          Result := pthread_mutexattr_setprotocol
+            (Mutex_Attr'Access, PTHREAD_PRIO_INHERIT);
+          pragma Assert (Result = 0);
+@@ -409,11 +367,6 @@ package body System.Task_Primitives.Oper
+             Result := pthread_rwlockattr_init (RWlock_Attr'Access);
+             pragma Assert (Result = 0);
+ 
+-            Result := pthread_rwlockattr_setkind_np
+-              (RWlock_Attr'Access,
+-               PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+-            pragma Assert (Result = 0);
+-
+             Result := pthread_rwlock_init (L.RW'Access, RWlock_Attr'Access);
+ 
+             pragma Assert (Result in 0 | ENOMEM);

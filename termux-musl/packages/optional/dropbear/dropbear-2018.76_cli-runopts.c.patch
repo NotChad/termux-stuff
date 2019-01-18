@@ -1,0 +1,43 @@
+diff -uNr dropbear-2018.76/cli-runopts.c dropbear-2018.76.mod/cli-runopts.c
+--- dropbear-2018.76/cli-runopts.c	2018-02-27 16:25:10.000000000 +0200
++++ dropbear-2018.76.mod/cli-runopts.c	2018-12-21 23:15:22.006080452 +0200
+@@ -36,7 +36,6 @@
+ static void printhelp(void);
+ static void parse_hostname(const char* orighostarg);
+ static void parse_multihop_hostname(const char* orighostarg, const char* argv0);
+-static void fill_own_user(void);
+ #if DROPBEAR_CLI_PUBKEY_AUTH
+ static void loadidentityfile(const char* filename, int warnfail);
+ #endif
+@@ -187,7 +186,7 @@
+ 	opts.keepalive_secs = DEFAULT_KEEPALIVE;
+ 	opts.idle_timeout_secs = DEFAULT_IDLE_TIMEOUT;
+ 
+-	fill_own_user();
++	cli_opts.own_user = m_strdup("termux");
+ 
+ 	for (i = 1; i < (unsigned int)argc; i++) {
+ 		/* Handle non-flag arguments such as hostname or commands for the remote host */
+@@ -727,22 +726,6 @@
+ }
+ #endif
+ 
+-static void fill_own_user() {
+-	uid_t uid;
+-	struct passwd *pw = NULL; 
+-
+-	uid = getuid();
+-
+-	pw = getpwuid(uid);
+-	if (pw && pw->pw_name != NULL) {
+-		cli_opts.own_user = m_strdup(pw->pw_name);
+-	} else {
+-		dropbear_log(LOG_INFO, "Warning: failed to identify current user. Trying anyway.");
+-		cli_opts.own_user = m_strdup("unknown");
+-	}
+-
+-}
+-
+ #if DROPBEAR_CLI_ANYTCPFWD
+ /* Turn a "[listenaddr:]listenport:remoteaddr:remoteport" string into into a forwarding
+  * set, and add it to the forwarding list */

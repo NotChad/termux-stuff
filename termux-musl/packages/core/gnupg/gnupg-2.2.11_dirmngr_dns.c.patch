@@ -1,0 +1,62 @@
+diff -uNr gnupg-2.2.11/dirmngr/dns.c gnupg-2.2.11.mod/dirmngr/dns.c
+--- gnupg-2.2.11/dirmngr/dns.c	2018-07-03 12:54:26.000000000 +0300
++++ gnupg-2.2.11.mod/dirmngr/dns.c	2018-12-20 19:12:09.573991888 +0200
+@@ -5111,7 +5111,7 @@
+ 	if (!(hosts = dns_hosts_open(&error)))
+ 		goto error;
+ 
+-	if ((error = dns_hosts_loadpath(hosts, "/etc/hosts")))
++	if ((error = dns_hosts_loadpath(hosts, "@TERMUX_PREFIX@/etc/hosts")))
+ 		goto error;
+ 
+ 	return hosts;
+@@ -5427,7 +5427,7 @@
+ 	if (!(resconf = dns_resconf_open(&error)))
+ 		goto error;
+ 
+-	if ((error = dns_resconf_loadpath(resconf, "/etc/resolv.conf"))) {
++	if ((error = dns_resconf_loadpath(resconf, "@TERMUX_PREFIX@/etc/resolv.conf"))) {
+ 		/*
+ 		 * NOTE: Both the glibc and BIND9 resolvers ignore a missing
+ 		 * /etc/resolv.conf, defaulting to a nameserver of
+@@ -5439,7 +5439,7 @@
+ 			goto error;
+ 	}
+ 
+-	if ((error = dns_nssconf_loadpath(resconf, "/etc/nsswitch.conf"))) {
++	if ((error = dns_nssconf_loadpath(resconf, "@TERMUX_PREFIX@/etc/nsswitch.conf"))) {
+ 		if (error != ENOENT)
+ 			goto error;
+ 	}
+@@ -10429,7 +10429,7 @@
+ 		panic("dns_resconf_open: %s", dns_strerror(error));
+ 
+ 	if (!MAIN.resconf.count)
+-		MAIN.resconf.path[MAIN.resconf.count++]	= "/etc/resolv.conf";
++		MAIN.resconf.path[MAIN.resconf.count++]	= "@TERMUX_PREFIX@/etc/resolv.conf";
+ 
+ 	for (i = 0; i < MAIN.resconf.count; i++) {
+ 		path	= MAIN.resconf.path[i];
+@@ -10456,7 +10456,7 @@
+ 	}
+ 
+ 	if (!MAIN.nssconf.count) {
+-		path = "/etc/nsswitch.conf";
++		path = "@TERMUX_PREFIX@/etc/nsswitch.conf";
+ 
+ 		if (!(error = dns_nssconf_loadpath(*resconf, path)))
+ 			MAIN.nssconf.path[MAIN.nssconf.count++] = path;
+@@ -10478,11 +10478,11 @@
+ 		return *hosts;
+ 
+ 	if (!MAIN.hosts.count) {
+-		MAIN.hosts.path[MAIN.hosts.count++]	= "/etc/hosts";
++		MAIN.hosts.path[MAIN.hosts.count++]	= "@TERMUX_PREFIX@/etc/hosts";
+ 
+ 		/* Explicitly test dns_hosts_local() */
+ 		if (!(*hosts = dns_hosts_local(&error)))
+-			panic("%s: %s", "/etc/hosts", dns_strerror(error));
++			panic("%s: %s", "@TERMUX_PREFIX@/etc/hosts", dns_strerror(error));
+ 
+ 		return *hosts;
+ 	}

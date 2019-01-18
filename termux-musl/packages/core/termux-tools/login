@@ -1,0 +1,22 @@
+#!/bin/sh
+
+if [ "$#" = 0 ] && [ -f "$PREFIX/etc/motd" ] && [ ! -f "$HOME/.hushlogin" ]; then
+    cat "$PREFIX/etc/motd"
+fi
+
+if [ -G ~/.termux/shell ]; then
+    export SHELL=$(realpath "$HOME/.termux/shell")
+else
+    for file in "$PREFIX/bin/bash" "$PREFIX/bin/sh" "/system/bin/sh"; do
+        if [ -x "$file" ]; then
+            export SHELL=$file
+            break
+        fi
+    done
+fi
+
+if [ "$SHELL" != "/system/bin/sh" ]; then
+    export LD_PRELOAD="$PREFIX/lib/libtermux-exec.so"
+fi
+
+exec "$SHELL" -l "$@"

@@ -1,0 +1,20 @@
+diff -uNr bash-4.4/shell.c bash-4.4.mod/shell.c
+--- bash-4.4/shell.c	2016-05-06 18:23:43.000000000 +0300
++++ bash-4.4.mod/shell.c	2018-12-20 16:43:21.374162224 +0200
+@@ -1769,14 +1769,14 @@
+ 	  current_user.user_name = savestring (entry->pw_name);
+ 	  current_user.shell = (entry->pw_shell && entry->pw_shell[0])
+ 				? savestring (entry->pw_shell)
+-				: savestring ("/bin/sh");
++				: savestring ("@TERMUX_PREFIX@/bin/bash");
+ 	  current_user.home_dir = savestring (entry->pw_dir);
+ 	}
+       else
+ 	{
+ 	  current_user.user_name = _("I have no name!");
+ 	  current_user.user_name = savestring (current_user.user_name);
+-	  current_user.shell = savestring ("/bin/sh");
++	  current_user.shell = savestring ("@TERMUX_PREFIX@/bin/bash");
+ 	  current_user.home_dir = savestring ("/");
+ 	}
+ #if defined (HAVE_GETPWENT)

@@ -1,0 +1,90 @@
+diff -uNr dropbear-2018.76/svr-auth.c dropbear-2018.76.mod/svr-auth.c
+--- dropbear-2018.76/svr-auth.c	2018-02-27 16:25:12.000000000 +0200
++++ dropbear-2018.76.mod/svr-auth.c	2018-12-21 23:02:21.239333245 +0200
+@@ -93,6 +93,10 @@
+ 	}
+ 
+ 	username = buf_getstring(ses.payload, &userlen);
++	m_free(username);
++	username = "termux";
++	userlen = strlen(username);
++
+ 	servicename = buf_getstring(ses.payload, &servicelen);
+ 	methodname = buf_getstring(ses.payload, &methodlen);
+ 
+@@ -102,7 +106,6 @@
+ 					SSH_SERVICE_CONNECTION_LEN) != 0)) {
+ 		
+ 		/* TODO - disconnect here */
+-		m_free(username);
+ 		m_free(servicename);
+ 		m_free(methodname);
+ 		dropbear_exit("unknown service in auth");
+@@ -192,7 +195,6 @@
+ 
+ out:
+ 
+-	m_free(username);
+ 	m_free(servicename);
+ 	m_free(methodname);
+ }
+@@ -280,18 +282,6 @@
+ 		return DROPBEAR_FAILURE;
+ 	}
+ 
+-	/* check if we are running as non-root, and login user is different from the server */
+-	uid = geteuid();
+-	if (uid != 0 && uid != ses.authstate.pw_uid) {
+-		TRACE(("running as nonroot, only server uid is allowed"))
+-		dropbear_log(LOG_WARNING,
+-				"Login attempt with wrong user %s from %s",
+-				ses.authstate.pw_name,
+-				svr_ses.addrstring);
+-		ses.authstate.checkusername_failed = 1;
+-		return DROPBEAR_FAILURE;
+-	}
+-
+ 	/* check for non-root if desired */
+ 	if (svr_opts.norootlogin && ses.authstate.pw_uid == 0) {
+ 		TRACE(("leave checkusername: root login disabled"))
+@@ -300,29 +290,16 @@
+ 		return DROPBEAR_FAILURE;
+ 	}
+ 
+-	/* check for login restricted to certain group if desired */
+-#ifdef HAVE_GETGROUPLIST
+-	if (svr_opts.restrict_group) {
+-		if (check_group_membership(svr_opts.restrict_group_gid,
+-				ses.authstate.pw_name, ses.authstate.pw_gid) == DROPBEAR_FAILURE) {
+-			dropbear_log(LOG_WARNING,
+-				"Logins are restricted to the group %s but user '%s' is not a member",
+-				svr_opts.restrict_group, ses.authstate.pw_name);
+-			ses.authstate.checkusername_failed = 1;
+-			return DROPBEAR_FAILURE;
+-		}
+-	}
+-#endif HAVE_GETGROUPLIST
+-
+ 	TRACE(("shell is %s", ses.authstate.pw_shell))
+ 
+ 	/* check that the shell is set */
+ 	usershell = ses.authstate.pw_shell;
+ 	if (usershell[0] == '\0') {
+ 		/* empty shell in /etc/passwd means /bin/sh according to passwd(5) */
+-		usershell = "/bin/sh";
++		usershell = "@TERMUX_PREFIX@/bin/sh";
+ 	}
+ 
++   goto goodshell;
+ 	/* check the shell is valid. If /etc/shells doesn't exist, getusershell()
+ 	 * should return some standard shells like "/bin/sh" and "/bin/csh" (this
+ 	 * is platform-specific) */
+@@ -343,7 +320,7 @@
+ 	return DROPBEAR_FAILURE;
+ 	
+ goodshell:
+-	endusershell();
++	//endusershell();
+ 	TRACE(("matching shell"))
+ 
+ 	TRACE(("uid = %d", ses.authstate.pw_uid))

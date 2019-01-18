@@ -1,0 +1,16 @@
+diff -uNr dpkg-1.19.2/lib/dpkg/atomic-file.c dpkg-1.19.2.mod/lib/dpkg/atomic-file.c
+--- dpkg-1.19.2/lib/dpkg/atomic-file.c	2018-10-08 01:07:51.000000000 +0300
++++ dpkg-1.19.2.mod/lib/dpkg/atomic-file.c	2018-12-17 18:34:41.736429186 +0200
+@@ -90,8 +90,11 @@
+ 
+ 	if (unlink(name_old) && errno != ENOENT)
+ 		ohshite(_("error removing old backup file '%s'"), name_old);
+-	if (link(file->name, name_old) && errno != ENOENT)
++
++	/* Termux: Use rename(2) since Android does not support hardlinks. */
++	if (rename(file->name, name_old) && errno != ENOENT) {
+ 		ohshite(_("error creating new backup file '%s'"), name_old);
++	}
+ 
+ 	free(name_old);
+ }

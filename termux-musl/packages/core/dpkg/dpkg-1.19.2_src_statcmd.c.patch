@@ -1,0 +1,12 @@
+diff -uNr dpkg-1.19.2/src/statcmd.c dpkg-1.19.2.mod/src/statcmd.c
+--- dpkg-1.19.2/src/statcmd.c	2018-10-08 12:43:48.000000000 +0300
++++ dpkg-1.19.2.mod/src/statcmd.c	2018-12-17 18:36:28.661803385 +0200
+@@ -177,8 +177,6 @@
+ static void
+ statdb_node_apply(const char *filename, struct file_stat *filestat)
+ {
+-	if (chown(filename, filestat->uid, filestat->gid) < 0)
+-		ohshite(_("error setting ownership of '%.255s'"), filename);
+ 	if (chmod(filename, filestat->mode & ~S_IFMT))
+ 		ohshite(_("error setting permissions of '%.255s'"), filename);
+ 

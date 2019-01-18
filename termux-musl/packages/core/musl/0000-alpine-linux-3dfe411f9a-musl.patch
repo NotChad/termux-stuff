@@ -1,0 +1,98 @@
+diff -uNr musl-1.1.20/src/env/__init_tls.c musl-1.1.20.mod/src/env/__init_tls.c
+--- musl-1.1.20/src/env/__init_tls.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/env/__init_tls.c	2019-01-05 21:59:30.965358167 +0200
+@@ -67,8 +67,10 @@
+ }
+ 
+ #if ULONG_MAX == 0xffffffff
++typedef Elf32_Ehdr Ehdr;
+ typedef Elf32_Phdr Phdr;
+ #else
++typedef Elf64_Ehdr Ehdr;
+ typedef Elf64_Phdr Phdr;
+ #endif
+ 
+@@ -78,15 +80,23 @@
+ static void static_init_tls(size_t *aux)
+ {
+ 	unsigned char *p;
+-	size_t n;
++	size_t n, e;
+ 	Phdr *phdr, *tls_phdr=0;
+ 	size_t base = 0;
+ 	void *mem;
+ 
+-	for (p=(void *)aux[AT_PHDR],n=aux[AT_PHNUM]; n; n--,p+=aux[AT_PHENT]) {
++	if (aux[AT_BASE]) {
++		Ehdr *ehdr = (void *)aux[AT_BASE];
++		p = (unsigned char *)aux[AT_BASE] + ehdr->e_phoff;
++		n = ehdr->e_phnum;
++		e = ehdr->e_phentsize;
++	} else {
++		p = (void *)aux[AT_PHDR];
++		n = aux[AT_PHNUM];
++		e = aux[AT_PHENT];
++	}
++	for (; n; n--, p+=e) {
+ 		phdr = (void *)p;
+-		if (phdr->p_type == PT_PHDR)
+-			base = aux[AT_PHDR] - phdr->p_vaddr;
+ 		if (phdr->p_type == PT_DYNAMIC && _DYNAMIC)
+ 			base = (size_t)_DYNAMIC - phdr->p_vaddr;
+ 		if (phdr->p_type == PT_TLS)
+diff -uNr musl-1.1.20/src/internal/pthread_impl.h musl-1.1.20.mod/src/internal/pthread_impl.h
+--- musl-1.1.20/src/internal/pthread_impl.h	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/internal/pthread_impl.h	2019-01-05 21:59:19.385276761 +0200
+@@ -174,7 +174,7 @@
+ void __restore_sigs(void *);
+ 
+ #define DEFAULT_STACK_SIZE 81920
+-#define DEFAULT_GUARD_SIZE 4096
++#define DEFAULT_GUARD_SIZE 8192
+ 
+ #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
+ 
+diff -uNr musl-1.1.20/src/network/getaddrinfo.c musl-1.1.20.mod/src/network/getaddrinfo.c
+--- musl-1.1.20/src/network/getaddrinfo.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/network/getaddrinfo.c	2019-01-05 21:59:00.648478540 +0200
+@@ -76,7 +76,16 @@
+ 				close(s);
+ 				if (!r) continue;
+ 			}
+-			if (errno != EAFNOSUPPORT) return EAI_SYSTEM;
++			switch (errno) {
++			case EADDRNOTAVAIL:
++			case EAFNOSUPPORT:
++			case EHOSTUNREACH:
++			case ENETDOWN:
++			case ENETUNREACH:
++				break;
++			default:
++				return EAI_SYSTEM;
++			}
+ 			if (family == tf[i]) return EAI_NONAME;
+ 			family = tf[1-i];
+ 		}
+diff -uNr musl-1.1.20/src/stdio/__lockfile.c musl-1.1.20.mod/src/stdio/__lockfile.c
+--- musl-1.1.20/src/stdio/__lockfile.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stdio/__lockfile.c	2019-01-05 21:59:11.975224709 +0200
+@@ -8,13 +8,13 @@
+ 	int owner = f->lock, tid = __pthread_self()->tid;
+ 	if ((owner & ~MAYBE_WAITERS) == tid)
+ 		return 0;
+-	for (;;) {
+-		owner = a_cas(&f->lock, 0, tid);
+-		if (!owner) return 1;
+-		if (a_cas(&f->lock, owner, owner|MAYBE_WAITERS)==owner) break;
++	owner = a_cas(&f->lock, 0, tid);
++	if (!owner) return 1;
++	while ((owner = a_cas(&f->lock, 0, tid|MAYBE_WAITERS))) {
++		if ((owner & MAYBE_WAITERS) ||
++		    a_cas(&f->lock, owner, owner|MAYBE_WAITERS)==owner)
++			__futexwait(&f->lock, owner|MAYBE_WAITERS, 1);
+ 	}
+-	while ((owner = a_cas(&f->lock, 0, tid|MAYBE_WAITERS)))
+-		__futexwait(&f->lock, owner, 1);
+ 	return 1;
+ }
+ 

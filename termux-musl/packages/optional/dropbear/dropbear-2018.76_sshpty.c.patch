@@ -1,0 +1,75 @@
+diff -uNr dropbear-2018.76/sshpty.c dropbear-2018.76.mod/sshpty.c
+--- dropbear-2018.76/sshpty.c	2018-02-27 16:25:12.000000000 +0200
++++ dropbear-2018.76.mod/sshpty.c	2018-12-21 23:12:58.034617164 +0200
+@@ -22,6 +22,8 @@
+ #include "errno.h"
+ #include "sshpty.h"
+ 
++# define USE_DEV_PTMX 1
++
+ /* Pty allocated with _getpty gets broken if we do I_PUSH:es to it. */
+ #if defined(HAVE__GETPTY) || defined(HAVE_OPENPTY)
+ #undef HAVE_DEV_PTMX
+@@ -351,62 +353,3 @@
+ 	w.ws_ypixel = ypixel;
+ 	(void) ioctl(ptyfd, TIOCSWINSZ, &w);
+ }
+-
+-void
+-pty_setowner(struct passwd *pw, const char *tty_name)
+-{
+-	struct group *grp;
+-	gid_t gid;
+-	mode_t mode;
+-	struct stat st;
+-
+-	/* Determine the group to make the owner of the tty. */
+-	grp = getgrnam("tty");
+-	if (grp) {
+-		gid = grp->gr_gid;
+-		mode = S_IRUSR | S_IWUSR | S_IWGRP;
+-	} else {
+-		gid = pw->pw_gid;
+-		mode = S_IRUSR | S_IWUSR | S_IWGRP | S_IWOTH;
+-	}
+-
+-	/*
+-	 * Change owner and mode of the tty as required.
+-	 * Warn but continue if filesystem is read-only and the uids match/
+-	 * tty is owned by root.
+-	 */
+-	if (stat(tty_name, &st)) {
+-		dropbear_exit("pty_setowner: stat(%.101s) failed: %.100s",
+-				tty_name, strerror(errno));
+-	}
+-
+-	if (st.st_uid != pw->pw_uid || st.st_gid != gid) {
+-		if (chown(tty_name, pw->pw_uid, gid) < 0) {
+-			if (errno == EROFS &&
+-			    (st.st_uid == pw->pw_uid || st.st_uid == 0)) {
+-				dropbear_log(LOG_ERR,
+-					"chown(%.100s, %u, %u) failed: %.100s",
+-						tty_name, (unsigned int)pw->pw_uid, (unsigned int)gid,
+-						strerror(errno));
+-			} else {
+-				dropbear_exit("chown(%.100s, %u, %u) failed: %.100s",
+-				    tty_name, (unsigned int)pw->pw_uid, (unsigned int)gid,
+-				    strerror(errno));
+-			}
+-		}
+-	}
+-
+-	if ((st.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) != mode) {
+-		if (chmod(tty_name, mode) < 0) {
+-			if (errno == EROFS &&
+-			    (st.st_mode & (S_IRGRP | S_IROTH)) == 0) {
+-				dropbear_log(LOG_ERR,
+-					"chmod(%.100s, 0%o) failed: %.100s",
+-					tty_name, mode, strerror(errno));
+-			} else {
+-				dropbear_exit("chmod(%.100s, 0%o) failed: %.100s",
+-				    tty_name, mode, strerror(errno));
+-			}
+-		}
+-	}
+-}

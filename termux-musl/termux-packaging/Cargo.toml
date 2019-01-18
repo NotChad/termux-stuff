@@ -1,0 +1,15 @@
+[package]
+name = "termux-packaging"
+version = "0.1.0"
+authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
+
+[dependencies]
+ar = "*"
+md5 = "*"
+rust-lzma = "*"
+structopt = "*"
+reqwest = "*"
+tar = "*"
+walkdir = "*"
+zip = { version = "*", features = ["deflate-zlib"], default-features = false }
+

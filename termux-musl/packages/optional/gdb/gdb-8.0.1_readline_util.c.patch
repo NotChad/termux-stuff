@@ -1,0 +1,12 @@
+diff -uNr gdb-8.0.1/readline/util.c gdb-8.0.1.mod/readline/util.c
+--- gdb-8.0.1/readline/util.c	2017-06-04 18:51:27.000000000 +0300
++++ gdb-8.0.1.mod/readline/util.c	2018-12-21 19:44:22.713822668 +0200
+@@ -517,7 +517,7 @@
+ 	    : "."),
+ 	   getpid());
+ #else
+-  sprintf (fnbuf, "/var/tmp/rltrace.%ld", getpid());
++  sprintf (fnbuf, "@TERMUX_PREFIX@/var/tmp/rltrace.%ld", getpid());
+ #endif
+   unlink(fnbuf);
+   _rl_tracefp = fopen (fnbuf, "w+");

@@ -1,0 +1,17 @@
+diff -uNr gnupg-2.2.11/configure gnupg-2.2.11.mod/configure
+--- gnupg-2.2.11/configure	2018-11-06 12:19:29.000000000 +0200
++++ gnupg-2.2.11.mod/configure	2018-12-20 19:00:21.083524084 +0200
+@@ -14888,13 +14888,6 @@
+ esac
+ 
+ 
+-if test "$have_android_system" = yes; then
+-   # On Android ttyname is a stub but prints an error message.
+-
+-$as_echo "#define HAVE_BROKEN_TTYNAME 1" >>confdefs.h
+-
+-fi
+-
+ ac_fn_c_check_type "$LINENO" "struct sigaction" "ac_cv_type_struct_sigaction" "#include <signal.h>
+ "
+ if test "x$ac_cv_type_struct_sigaction" = xyes; then :

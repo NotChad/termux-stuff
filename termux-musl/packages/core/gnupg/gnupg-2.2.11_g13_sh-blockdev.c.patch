@@ -1,0 +1,30 @@
+diff -uNr gnupg-2.2.11/g13/sh-blockdev.c gnupg-2.2.11.mod/g13/sh-blockdev.c
+--- gnupg-2.2.11/g13/sh-blockdev.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/g13/sh-blockdev.c	2018-12-20 19:17:57.890556677 +0200
+@@ -53,7 +53,7 @@
+   argv[0] = "--getsz";
+   argv[1] = name;
+   argv[2] = NULL;
+-  err = gnupg_exec_tool ("/sbin/blockdev", argv, NULL, &result, NULL);
++  err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/blockdev", argv, NULL, &result, NULL);
+   if (!err)
+     {
+       gpg_err_set_errno (0);
+@@ -86,7 +86,7 @@
+   argv[3] = "UUID";
+   argv[4] = name;
+   argv[5] = NULL;
+-  err = gnupg_exec_tool ("/sbin/blkid", argv, NULL, &buffer, NULL);
++  err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/blkid", argv, NULL, &buffer, NULL);
+   if (err)
+     return gpg_error (GPG_ERR_FALSE);
+   if (*buffer)
+@@ -103,7 +103,7 @@
+   argv[3] = "PARTUUID";
+   argv[4] = name;
+   argv[5] = NULL;
+-  err = gnupg_exec_tool ("/sbin/blkid", argv, NULL, &buffer, NULL);
++  err = gnupg_exec_tool ("@TERMUX_PREFIX@/bin/blkid", argv, NULL, &buffer, NULL);
+   if (err)
+     return gpg_error (GPG_ERR_FALSE);
+   if (!*buffer)

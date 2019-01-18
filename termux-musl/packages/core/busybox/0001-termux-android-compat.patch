@@ -1,0 +1,324 @@
+Termux & Android compatibility patch.
+
+diff -uNr busybox-1.28.4/coreutils/mktemp.c busybox-1.28.4.mod/coreutils/mktemp.c
+--- busybox-1.28.4/coreutils/mktemp.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/coreutils/mktemp.c	2018-12-23 19:42:16.486237092 +0200
+@@ -50,7 +50,7 @@
+ //usage:     "\n	-p DIR	Use DIR as a base directory (implies -t)"
+ //usage:     "\n	-u	Do not create anything; print a name"
+ //usage:     "\n"
+-//usage:     "\nBase directory is: -p DIR, else $TMPDIR, else /tmp"
++//usage:     "\nBase directory is: -p DIR, else $TMPDIR, else @TERMUX_PREFIX@/tmp"
+ //usage:
+ //usage:#define mktemp_example_usage
+ //usage:       "$ mktemp /tmp/temp.XXXXXX\n"
+@@ -76,7 +76,7 @@
+ 
+ 	path = getenv("TMPDIR");
+ 	if (!path || path[0] == '\0')
+-		path = "/tmp";
++		path = "@TERMUX_PREFIX@/tmp";
+ 
+ 	opts = getopt32(argv, "^" "dqtp:u" "\0" "?1"/*1 arg max*/, &path);
+ 
+diff -uNr busybox-1.28.4/e2fsprogs/fsck.c busybox-1.28.4.mod/e2fsprogs/fsck.c
+--- busybox-1.28.4/e2fsprogs/fsck.c	2018-12-23 19:40:44.838415217 +0200
++++ busybox-1.28.4.mod/e2fsprogs/fsck.c	2018-12-23 19:42:16.489570464 +0200
+@@ -1077,7 +1077,7 @@
+ 	 * so we are scanning it anyway */
+ 	fstab = getenv("FSTAB_FILE");
+ 	if (!fstab)
+-		fstab = "/etc/fstab";
++		fstab = "@TERMUX_PREFIX@/etc/fstab";
+ 	load_fs_info(fstab);
+ 
+ 	/*interactive = (num_devices == 1) | G.serialize;*/
+diff -uNr busybox-1.28.4/editors/diff.c busybox-1.28.4.mod/editors/diff.c
+--- busybox-1.28.4/editors/diff.c	2018-12-23 19:40:44.838415217 +0200
++++ busybox-1.28.4.mod/editors/diff.c	2018-12-23 19:42:16.489570464 +0200
+@@ -734,7 +734,7 @@
+ 		 * When we meet non-seekable file, we must make a temp copy.
+ 		 */
+ 		if (lseek(fd, 0, SEEK_SET) == -1 && errno == ESPIPE) {
+-			char name[] = "/tmp/difXXXXXX";
++			char name[] = "@TERMUX_PREFIX@/tmp/difXXXXXX";
+ 			int fd_tmp = xmkstemp(name);
+ 
+ 			unlink(name);
+diff -uNr busybox-1.28.4/include/libbb.h busybox-1.28.4.mod/include/libbb.h
+--- busybox-1.28.4/include/libbb.h	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/include/libbb.h	2018-12-23 19:50:00.916404420 +0200
+@@ -2006,11 +2006,10 @@
+ 
+ #define bb_dev_null "/dev/null"
+ extern const char bb_busybox_exec_path[] ALIGN1;
+-/* util-linux manpage says /sbin:/bin:/usr/sbin:/usr/bin,
+- * but I want to save a few bytes here */
+-extern const char bb_PATH_root_path[] ALIGN1; /* "PATH=/sbin:/usr/sbin:/bin:/usr/bin" */
++
++extern const char bb_PATH_root_path[] ALIGN1; /* "PATH=@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets" */
+ #define bb_default_root_path (bb_PATH_root_path + sizeof("PATH"))
+-#define bb_default_path      (bb_PATH_root_path + sizeof("PATH=/sbin:/usr/sbin"))
++#define bb_default_path      (bb_PATH_root_path + sizeof("PATH"))
+ 
+ extern const int const_int_0;
+ //extern const int const_int_1;
+@@ -2038,12 +2037,12 @@
+  * use bb_default_login_shell and following defines.
+  * If you change LIBBB_DEFAULT_LOGIN_SHELL,
+  * don't forget to change increment constant. */
+-#define LIBBB_DEFAULT_LOGIN_SHELL  "-/bin/sh"
++#define LIBBB_DEFAULT_LOGIN_SHELL  "-@TERMUX_PREFIX@/bin/applets/ash"
+ extern const char bb_default_login_shell[] ALIGN1;
+ /* "/bin/sh" */
+ #define DEFAULT_SHELL              (bb_default_login_shell+1)
+ /* "sh" */
+-#define DEFAULT_SHELL_SHORT_NAME   (bb_default_login_shell+6)
++#define DEFAULT_SHELL_SHORT_NAME   (bb_default_login_shell+sizeof(LIBBB_DEFAULT_LOGIN_SHELL)-4)
+ 
+ /* The following devices are the same on all systems.  */
+ #define CURRENT_TTY "/dev/tty"
+diff -uNr busybox-1.28.4/libbb/messages.c busybox-1.28.4.mod/libbb/messages.c
+--- busybox-1.28.4/libbb/messages.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/libbb/messages.c	2018-12-23 19:42:16.492903836 +0200
+@@ -34,10 +34,10 @@
+ 
+ const char bb_busybox_exec_path[] ALIGN1 = CONFIG_BUSYBOX_EXEC_PATH;
+ const char bb_default_login_shell[] ALIGN1 = LIBBB_DEFAULT_LOGIN_SHELL;
+-/* util-linux manpage says /sbin:/bin:/usr/sbin:/usr/bin,
+- * but I want to save a few bytes here. Check libbb.h before changing! */
++
++/* Check libbb.h before changing! */
+ const char bb_PATH_root_path[] ALIGN1 =
+-	"PATH=/sbin:/usr/sbin:/bin:/usr/bin" BB_ADDITIONAL_PATH;
++	"PATH=@TERMUX_PREFIX@/bin:@TERMUX_PREFIX@/bin/applets" BB_ADDITIONAL_PATH;
+ 
+ 
+ //const int const_int_1 = 1;
+diff -uNr busybox-1.28.4/miscutils/crond.c busybox-1.28.4.mod/miscutils/crond.c
+--- busybox-1.28.4/miscutils/crond.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/miscutils/crond.c	2018-12-23 19:42:16.492903836 +0200
+@@ -437,7 +437,7 @@
+ 
+ 	maxLines = (strcmp(fileName, "root") == 0) ? 65535 : MAXLINES;
+ 
+-	if (fstat(fileno(parser->fp), &sbuf) == 0 && sbuf.st_uid == DAEMON_UID) {
++	if (fstat(fileno(parser->fp), &sbuf) == 0) {
+ 		CronFile *file = xzalloc(sizeof(CronFile));
+ 		CronLine **pline;
+ 		int n;
+@@ -657,20 +657,6 @@
+ 
+ static void set_env_vars(struct passwd *pas, const char *shell)
+ {
+-	/* POSIX requires crond to set up at least HOME, LOGNAME, PATH, SHELL.
+-	 * We assume crond inherited suitable PATH.
+-	 */
+-#if SETENV_LEAKS
+-	safe_setenv(&G.env_var_logname, "LOGNAME", pas->pw_name);
+-	safe_setenv(&G.env_var_user, "USER", pas->pw_name);
+-	safe_setenv(&G.env_var_home, "HOME", pas->pw_dir);
+-	safe_setenv(&G.env_var_shell, "SHELL", shell);
+-#else
+-	xsetenv("LOGNAME", pas->pw_name);
+-	xsetenv("USER", pas->pw_name);
+-	xsetenv("HOME", pas->pw_dir);
+-	xsetenv("SHELL", shell);
+-#endif
+ }
+ 
+ static void change_user(struct passwd *pas)
+diff -uNr busybox-1.28.4/miscutils/crontab.c busybox-1.28.4.mod/miscutils/crontab.c
+--- busybox-1.28.4/miscutils/crontab.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/miscutils/crontab.c	2018-12-23 19:42:16.492903836 +0200
+@@ -51,12 +51,6 @@
+ 		return;
+ 	}
+ 
+-	/* CHILD - change user and run editor */
+-	/* initgroups, setgid, setuid */
+-	change_identity(pas);
+-	setup_environment(pas->pw_shell,
+-			SETUP_ENV_CHANGEENV | SETUP_ENV_TO_TMP,
+-			pas);
+ 	ptr = getenv("VISUAL");
+ 	if (!ptr) {
+ 		ptr = getenv("EDITOR");
+@@ -167,7 +161,8 @@
+ 		}
+ 		close_on_exec_on(src_fd); /* don't want editor to see this fd */
+ 		edit_file(pas, tmp_fname);
+-		/* fall through */
++        xrename(tmp_fname, pas->pw_name);
++        break;
+ 
+ 	case 0: /* Replace (no -l, -e, or -r were given) */
+ 		new_fname = xasprintf("%s.new", pas->pw_name);
+diff -uNr busybox-1.28.4/networking/ftpd.c busybox-1.28.4.mod/networking/ftpd.c
+--- busybox-1.28.4/networking/ftpd.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/networking/ftpd.c	2018-12-23 19:42:16.492903836 +0200
+@@ -1287,8 +1287,6 @@
+ 		G.root_fd = xopen("/", O_RDONLY | O_DIRECTORY);
+ 		close_on_exec_on(G.root_fd);
+ #endif
+-		if (chroot(basedir) == 0)
+-			basedir = "/";
+ #if !BB_MMU
+ 		else {
+ 			close(G.root_fd);
+diff -uNr busybox-1.28.4/networking/httpd.c busybox-1.28.4.mod/networking/httpd.c
+--- busybox-1.28.4/networking/httpd.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/networking/httpd.c	2018-12-23 19:42:16.496237207 +0200
+@@ -234,7 +234,7 @@
+ //usage:     "\n	-i		Inetd mode"
+ //usage:     "\n	-f		Don't daemonize"
+ //usage:     "\n	-v[v]		Verbose"
+-//usage:     "\n	-p [IP:]PORT	Bind to IP:PORT (default *:80)"
++//usage:     "\n	-p [IP:]PORT	Bind to IP:PORT (default *:8080)"
+ //usage:	IF_FEATURE_HTTPD_SETUID(
+ //usage:     "\n	-u USER[:GRP]	Set uid/gid after binding to port")
+ //usage:	IF_FEATURE_HTTPD_BASIC_AUTH(
+@@ -273,7 +273,7 @@
+ 
+ #define HEADER_READ_TIMEOUT 60
+ 
+-static const char DEFAULT_PATH_HTTPD_CONF[] ALIGN1 = "/etc";
++static const char DEFAULT_PATH_HTTPD_CONF[] ALIGN1 = "@TERMUX_PREFIX@/etc";
+ static const char HTTPD_CONF[] ALIGN1 = "httpd.conf";
+ static const char HTTP_200[] ALIGN1 = "HTTP/1.0 200 OK\r\n";
+ static const char index_html[] ALIGN1 = "index.html";
+@@ -491,7 +491,7 @@
+ 	SET_PTR_TO_GLOBALS(xzalloc(sizeof(G))); \
+ 	IF_FEATURE_HTTPD_BASIC_AUTH(g_realm = "Web Server Authentication";) \
+ 	IF_FEATURE_HTTPD_RANGES(range_start = -1;) \
+-	bind_addr_or_port = "80"; \
++	bind_addr_or_port = "8080"; \
+ 	index_page = index_html; \
+ 	file_size = -1; \
+ } while (0)
+@@ -1007,7 +1007,7 @@
+ 	if (!errno && n && n <= 0xffff)
+ 		n = create_and_bind_stream_or_die(NULL, n);
+ 	else
+-		n = create_and_bind_stream_or_die(bind_addr_or_port, 80);
++		n = create_and_bind_stream_or_die(bind_addr_or_port, 8080);
+ 	xlisten(n, 9);
+ 	return n;
+ }
+@@ -2397,7 +2397,7 @@
+ 		int proxy_fd;
+ 		len_and_sockaddr *lsa;
+ 
+-		lsa = host2sockaddr(proxy_entry->host_port, 80);
++		lsa = host2sockaddr(proxy_entry->host_port, 8080);
+ 		if (lsa == NULL)
+ 			send_headers_and_exit(HTTP_INTERNAL_SERVER_ERROR);
+ 		proxy_fd = socket(lsa->u.sa.sa_family, SOCK_STREAM, 0);
+diff -uNr busybox-1.28.4/networking/telnetd.c busybox-1.28.4.mod/networking/telnetd.c
+--- busybox-1.28.4/networking/telnetd.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/networking/telnetd.c	2018-12-23 19:42:16.496237207 +0200
+@@ -159,8 +159,8 @@
+ #define G (*(struct globals*)bb_common_bufsiz1)
+ #define INIT_G() do { \
+ 	setup_common_bufsiz(); \
+-	G.loginpath = "/bin/login"; \
+-	G.issuefile = "/etc/issue.net"; \
++	G.loginpath = "@TERMUX_PREFIX@/bin/login"; \
++	G.issuefile = "@TERMUX_PREFIX@/etc/issue.net"; \
+ } while (0)
+ 
+ 
+@@ -695,7 +695,7 @@
+ 	} else {
+ 		master_fd = 0;
+ 		if (!(opt & OPT_WAIT)) {
+-			unsigned portnbr = 23;
++			unsigned portnbr = 8023;
+ 			if (opt & OPT_PORT)
+ 				portnbr = xatou16(opt_portnbr);
+ 			master_fd = create_and_bind_stream_or_die(opt_bindaddr, portnbr);
+diff -uNr busybox-1.28.4/networking/tftp.c busybox-1.28.4.mod/networking/tftp.c
+--- busybox-1.28.4/networking/tftp.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/networking/tftp.c	2018-12-23 19:42:16.496237207 +0200
+@@ -865,7 +865,7 @@
+ 		G.pw = xgetpwnam(user_opt);
+ 	}
+ 	if (argv[0]) {
+-		xchroot(argv[0]);
++		xchdir(argv[0]);
+ 	}
+ 
+ 	result = recv_from_to(STDIN_FILENO,
+diff -uNr busybox-1.28.4/shell/ash.c busybox-1.28.4.mod/shell/ash.c
+--- busybox-1.28.4/shell/ash.c	2018-12-23 19:40:44.851748735 +0200
++++ busybox-1.28.4.mod/shell/ash.c	2018-12-23 19:42:16.499570579 +0200
+@@ -13954,7 +13954,7 @@
+ 		const char *hp;
+ 
+ 		state = 1;
+-		read_profile("/etc/profile");
++		read_profile("@TERMUX_PREFIX@/etc/profile");
+  state1:
+ 		state = 2;
+ 		hp = lookupvar("HOME");
+diff -uNr busybox-1.28.4/shell/hush.c busybox-1.28.4.mod/shell/hush.c
+--- busybox-1.28.4/shell/hush.c	2018-04-01 14:04:11.000000000 +0300
++++ busybox-1.28.4.mod/shell/hush.c	2018-12-23 19:42:16.499570579 +0200
+@@ -9080,8 +9080,8 @@
+ 	/* If we are login shell... */
+ 	if (flags & OPT_login) {
+ 		FILE *input;
+-		debug_printf("sourcing /etc/profile\n");
+-		input = fopen_for_read("/etc/profile");
++		debug_printf("sourcing @TERMUX_PREFIX@/etc/profile\n");
++		input = fopen_for_read("@TERMUX_PREFIX@/etc/profile");
+ 		if (input != NULL) {
+ 			remember_FILE(input);
+ 			install_special_sighandlers();
+diff -uNr busybox-1.28.4/util-linux/mount.c busybox-1.28.4.mod/util-linux/mount.c
+--- busybox-1.28.4/util-linux/mount.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/util-linux/mount.c	2018-12-23 19:42:16.502903951 +0200
+@@ -638,8 +638,8 @@
+ // Return a list of all block device backed filesystems
+ static llist_t *get_block_backed_filesystems(void)
+ {
+-	static const char filesystems[2][sizeof("/proc/filesystems")] = {
+-		"/etc/filesystems",
++	static const char filesystems[2][sizeof("@TERMUX_PREFIX@/etc/filesystems")] = {
++		"@TERMUX_PREFIX@/etc/filesystems",
+ 		"/proc/filesystems",
+ 	};
+ 	char *fs, *buf;
+@@ -2179,7 +2179,7 @@
+ 	char *O_optmatch = NULL;
+ 	char *storage_path;
+ 	llist_t *lst_o = NULL;
+-	const char *fstabname = "/etc/fstab";
++	const char *fstabname = "@TERMUX_PREFIX@/etc/fstab";
+ 	FILE *fstab;
+ 	int i, j;
+ 	int rc = EXIT_SUCCESS;
+diff -uNr busybox-1.28.4/util-linux/setarch.c busybox-1.28.4.mod/util-linux/setarch.c
+--- busybox-1.28.4/util-linux/setarch.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/util-linux/setarch.c	2018-12-23 19:42:16.506237323 +0200
+@@ -98,7 +98,7 @@
+ 
+ 	argv += optind;
+ 	if (!argv[0])
+-		(--argv)[0] = (char*)"/bin/sh";
++		(--argv)[0] = (char*)"@TERMUX_PREFIX@/bin/bash";
+ 
+ 	/* Try to execute the program */
+ 	BB_EXECVP_or_die(argv);
+diff -uNr busybox-1.28.4/util-linux/swaponoff.c busybox-1.28.4.mod/util-linux/swaponoff.c
+--- busybox-1.28.4/util-linux/swaponoff.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/util-linux/swaponoff.c	2018-12-23 19:42:16.506237323 +0200
+@@ -234,7 +234,7 @@
+ {
+ 	struct mntent *m;
+ 	int err = 0;
+-	FILE *f = xfopen_for_read("/etc/fstab");
++	FILE *f = xfopen_for_read("@TERMUX_PREFIX@/etc/fstab");
+ 
+ 	while ((m = getmntent(f)) != NULL) {
+ 		if (strcmp(m->mnt_type, MNTTYPE_SWAP) == 0) {

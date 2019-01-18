@@ -1,0 +1,12 @@
+diff -uNr TermuxAm-0.2/app/src/main/java/com/example/termuxam/IActivityManager.java TermuxAm-0.2.mod/app/src/main/java/com/example/termuxam/IActivityManager.java
+--- TermuxAm-0.2/app/src/main/java/com/example/termuxam/IActivityManager.java	2018-02-05 19:24:14.000000000 +0200
++++ TermuxAm-0.2.mod/app/src/main/java/com/example/termuxam/IActivityManager.java	2019-01-13 13:49:47.992106108 +0200
+@@ -29,7 +29,7 @@
+     private CrossVersionReflectedMethod mIntentSenderSendMethod;
+ 
+     IActivityManager() throws Exception {
+-        this("com.termux");
++        this("com.termux.musl");
+     }
+ 
+     IActivityManager(String callingAppName) throws Exception {

@@ -1,0 +1,30 @@
+diff -uNr gnupg-2.2.11/dirmngr/dns-stuff.c gnupg-2.2.11.mod/dirmngr/dns-stuff.c
+--- gnupg-2.2.11/dirmngr/dns-stuff.c	2018-07-03 12:54:26.000000000 +0300
++++ gnupg-2.2.11.mod/dirmngr/dns-stuff.c	2018-12-20 19:12:23.297442773 +0200
+@@ -114,7 +114,7 @@
+ #define DEFAULT_TIMEOUT 30
+ 
+ 
+-#define RESOLV_CONF_NAME "/etc/resolv.conf"
++#define RESOLV_CONF_NAME "@TERMUX_PREFIX@/etc/resolv.conf"
+ 
+ /* Two flags to enable verbose and debug mode.  */
+ static int opt_verbose;
+@@ -544,7 +544,7 @@
+           goto leave;
+         }
+ 
+-      fname = "/etc/nsswitch.conf";
++      fname = "@TERMUX_PREFIX@/etc/nsswitch.conf";
+       err = libdns_error_to_gpg_error
+         (dns_nssconf_loadpath (ld.resolv_conf, fname));
+       if (err)
+@@ -602,7 +602,7 @@
+     derr = dns_hosts_loadpath (ld.hosts, hosts_path);
+     xfree (hosts_path);
+ #else
+-    derr = dns_hosts_loadpath (ld.hosts, "/etc/hosts");
++    derr = dns_hosts_loadpath (ld.hosts, "@TERMUX_PREFIX@/etc/hosts");
+ #endif
+     if (derr)
+       {

@@ -1,0 +1,513 @@
+Starting from Android 8, a seccomp filter was introduced to filter
+some unwanted system calls. On Android 9 the filter became too
+restrictive so some regular system calls were affected.
+
+This patch applies some Android-compatible changes, so 'bad system call'
+erros shouldn't happen anymore.
+
+diff -uNr musl-1.1.20/src/env/__libc_start_main.c musl-1.1.20.mod/src/env/__libc_start_main.c
+--- musl-1.1.20/src/env/__libc_start_main.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/env/__libc_start_main.c	2019-01-05 22:05:47.698037262 +0200
+@@ -42,12 +42,7 @@
+ 		&& !aux[AT_SECURE]) return;
+ 
+ 	struct pollfd pfd[3] = { {.fd=0}, {.fd=1}, {.fd=2} };
+-	int r =
+-#ifdef SYS_poll
+-	__syscall(SYS_poll, pfd, 3, 0);
+-#else
+-	__syscall(SYS_ppoll, pfd, 3, &(struct timespec){0}, 0, _NSIG/8);
+-#endif
++	int r = __syscall(SYS_ppoll, pfd, 3, &(struct timespec){0}, 0, _NSIG/8);
+ 	if (r<0) a_crash();
+ 	for (i=0; i<3; i++) if (pfd[i].revents&POLLNVAL)
+ 		if (__sys_open("/dev/null", O_RDWR)<0)
+diff -uNr musl-1.1.20/src/internal/syscall.h musl-1.1.20.mod/src/internal/syscall.h
+--- musl-1.1.20/src/internal/syscall.h	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/internal/syscall.h	2019-01-05 22:05:19.541168764 +0200
+@@ -226,17 +226,10 @@
+ #define __SC_recvmmsg    19
+ #define __SC_sendmmsg    20
+ 
+-#ifdef SYS_open
+-#define __sys_open2(x,pn,fl) __syscall2(SYS_open, pn, (fl)|O_LARGEFILE)
+-#define __sys_open3(x,pn,fl,mo) __syscall3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
+-#define __sys_open_cp2(x,pn,fl) __syscall_cp2(SYS_open, pn, (fl)|O_LARGEFILE)
+-#define __sys_open_cp3(x,pn,fl,mo) __syscall_cp3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
+-#else
+ #define __sys_open2(x,pn,fl) __syscall3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
+ #define __sys_open3(x,pn,fl,mo) __syscall4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
+ #define __sys_open_cp2(x,pn,fl) __syscall_cp3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
+ #define __sys_open_cp3(x,pn,fl,mo) __syscall_cp4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
+-#endif
+ 
+ #define __sys_open(...) __SYSCALL_DISP(__sys_open,,__VA_ARGS__)
+ #define sys_open(...) __syscall_ret(__sys_open(__VA_ARGS__))
+diff -uNr musl-1.1.20/src/network/accept4.c musl-1.1.20.mod/src/network/accept4.c
+--- musl-1.1.20/src/network/accept4.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/network/accept4.c	2019-01-05 22:05:19.541168764 +0200
+@@ -7,11 +7,9 @@
+ 
+ int accept4(int fd, struct sockaddr *restrict addr, socklen_t *restrict len, int flg)
+ {
+-	if (!flg) return accept(fd, addr, len);
+ 	int ret = socketcall_cp(accept4, fd, addr, len, flg, 0, 0);
+-	if (ret>=0 || (errno != ENOSYS && errno != EINVAL)) return ret;
+-	ret = accept(fd, addr, len);
+-	if (ret<0) return ret;
++	if (ret<0)
++		return ret;
+ 	if (flg & SOCK_CLOEXEC)
+ 		__syscall(SYS_fcntl, ret, F_SETFD, FD_CLOEXEC);
+ 	if (flg & SOCK_NONBLOCK)
+diff -uNr musl-1.1.20/src/network/accept.c musl-1.1.20.mod/src/network/accept.c
+--- musl-1.1.20/src/network/accept.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/network/accept.c	2019-01-05 22:05:19.541168764 +0200
+@@ -4,5 +4,5 @@
+ 
+ int accept(int fd, struct sockaddr *restrict addr, socklen_t *restrict len)
+ {
+-	return socketcall_cp(accept, fd, addr, len, 0, 0, 0);
++	return accept4(fd, addr, len, 0);
+ }
+diff -uNr musl-1.1.20/src/process/fork.c musl-1.1.20.mod/src/process/fork.c
+--- musl-1.1.20/src/process/fork.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/process/fork.c	2019-01-05 22:05:19.541168764 +0200
+@@ -17,11 +17,7 @@
+ 	sigset_t set;
+ 	__fork_handler(-1);
+ 	__block_all_sigs(&set);
+-#ifdef SYS_fork
+-	ret = __syscall(SYS_fork);
+-#else
+ 	ret = __syscall(SYS_clone, SIGCHLD, 0);
+-#endif
+ 	if (!ret) {
+ 		pthread_t self = __pthread_self();
+ 		self->tid = __syscall(SYS_gettid);
+diff -uNr musl-1.1.20/src/process/posix_spawn.c musl-1.1.20.mod/src/process/posix_spawn.c
+--- musl-1.1.20/src/process/posix_spawn.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/process/posix_spawn.c	2019-01-05 22:05:19.541168764 +0200
+@@ -24,11 +24,7 @@
+ 
+ static int __sys_dup2(int old, int new)
+ {
+-#ifdef SYS_dup2
+-	return __syscall(SYS_dup2, old, new);
+-#else
+ 	return __syscall(SYS_dup3, old, new, 0);
+-#endif
+ }
+ 
+ static int child(void *args_vp)
+diff -uNr musl-1.1.20/src/process/vfork.c musl-1.1.20.mod/src/process/vfork.c
+--- musl-1.1.20/src/process/vfork.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/process/vfork.c	2019-01-05 22:05:19.544502122 +0200
+@@ -7,11 +7,7 @@
+ pid_t __vfork(void)
+ {
+ 	/* vfork syscall cannot be made from C code */
+-#ifdef SYS_fork
+-	return syscall(SYS_fork);
+-#else
+ 	return syscall(SYS_clone, SIGCHLD, 0);
+-#endif
+ }
+ 
+ weak_alias(__vfork, vfork);
+diff -uNr musl-1.1.20/src/select/poll.c musl-1.1.20.mod/src/select/poll.c
+--- musl-1.1.20/src/select/poll.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/select/poll.c	2019-01-05 22:05:19.544502122 +0200
+@@ -6,11 +6,7 @@
+ 
+ int poll(struct pollfd *fds, nfds_t n, int timeout)
+ {
+-#ifdef SYS_poll
+-	return syscall_cp(SYS_poll, fds, n, timeout);
+-#else
+ 	return syscall_cp(SYS_ppoll, fds, n, timeout>=0 ?
+ 		&((struct timespec){ .tv_sec = timeout/1000,
+ 		.tv_nsec = timeout%1000*1000000 }) : 0, 0, _NSIG/8);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/select/select.c musl-1.1.20.mod/src/select/select.c
+--- musl-1.1.20/src/select/select.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/select/select.c	2019-01-05 22:05:19.544502122 +0200
+@@ -7,9 +7,6 @@
+ 
+ int select(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restrict efds, struct timeval *restrict tv)
+ {
+-#ifdef SYS_select
+-	return syscall_cp(SYS_select, n, rfds, wfds, efds, tv);
+-#else
+ 	syscall_arg_t data[2] = { 0, _NSIG/8 };
+ 	struct timespec ts;
+ 	if (tv) {
+@@ -22,5 +19,4 @@
+ 			max_time : tv->tv_sec + extra_secs;
+ 	}
+ 	return syscall_cp(SYS_pselect6, n, rfds, wfds, efds, tv ? &ts : 0, data);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/stat/chmod.c musl-1.1.20.mod/src/stat/chmod.c
+--- musl-1.1.20/src/stat/chmod.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/chmod.c	2019-01-05 22:05:19.544502122 +0200
+@@ -4,9 +4,5 @@
+ 
+ int chmod(const char *path, mode_t mode)
+ {
+-#ifdef SYS_chmod
+-	return syscall(SYS_chmod, path, mode);
+-#else
+ 	return syscall(SYS_fchmodat, AT_FDCWD, path, mode);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/stat/fchmod.c musl-1.1.20.mod/src/stat/fchmod.c
+--- musl-1.1.20/src/stat/fchmod.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/fchmod.c	2019-01-05 22:05:19.544502122 +0200
+@@ -13,9 +13,5 @@
+ 
+ 	char buf[15+3*sizeof(int)];
+ 	__procfdname(buf, fd);
+-#ifdef SYS_chmod
+-	return syscall(SYS_chmod, buf, mode);
+-#else
+ 	return syscall(SYS_fchmodat, AT_FDCWD, buf, mode);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/stat/fstat.c musl-1.1.20.mod/src/stat/fstat.c
+--- musl-1.1.20/src/stat/fstat.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/fstat.c	2019-01-05 22:05:19.544502122 +0200
+@@ -14,11 +14,7 @@
+ 
+ 	char buf[15+3*sizeof(int)];
+ 	__procfdname(buf, fd);
+-#ifdef SYS_stat
+-	return syscall(SYS_stat, buf, st);
+-#else
+ 	return syscall(SYS_fstatat, AT_FDCWD, buf, st, 0);
+-#endif
+ }
+ 
+ LFS64(fstat);
+diff -uNr musl-1.1.20/src/stat/lstat.c musl-1.1.20.mod/src/stat/lstat.c
+--- musl-1.1.20/src/stat/lstat.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/lstat.c	2019-01-05 22:05:19.544502122 +0200
+@@ -5,11 +5,7 @@
+ 
+ int lstat(const char *restrict path, struct stat *restrict buf)
+ {
+-#ifdef SYS_lstat
+-	return syscall(SYS_lstat, path, buf);
+-#else
+ 	return syscall(SYS_fstatat, AT_FDCWD, path, buf, AT_SYMLINK_NOFOLLOW);
+-#endif
+ }
+ 
+ LFS64(lstat);
+diff -uNr musl-1.1.20/src/stat/mkdir.c musl-1.1.20.mod/src/stat/mkdir.c
+--- musl-1.1.20/src/stat/mkdir.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/mkdir.c	2019-01-05 22:05:19.547835479 +0200
+@@ -4,9 +4,5 @@
+ 
+ int mkdir(const char *path, mode_t mode)
+ {
+-#ifdef SYS_mkdir
+-	return syscall(SYS_mkdir, path, mode);
+-#else
+ 	return syscall(SYS_mkdirat, AT_FDCWD, path, mode);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/stat/mknod.c musl-1.1.20.mod/src/stat/mknod.c
+--- musl-1.1.20/src/stat/mknod.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/mknod.c	2019-01-05 22:05:19.547835479 +0200
+@@ -4,9 +4,5 @@
+ 
+ int mknod(const char *path, mode_t mode, dev_t dev)
+ {
+-#ifdef SYS_mknod
+-	return syscall(SYS_mknod, path, mode, dev);
+-#else
+ 	return syscall(SYS_mknodat, AT_FDCWD, path, mode, dev);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/stat/stat.c musl-1.1.20.mod/src/stat/stat.c
+--- musl-1.1.20/src/stat/stat.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stat/stat.c	2019-01-05 22:05:19.547835479 +0200
+@@ -5,11 +5,7 @@
+ 
+ int stat(const char *restrict path, struct stat *restrict buf)
+ {
+-#ifdef SYS_stat
+-	return syscall(SYS_stat, path, buf);
+-#else
+ 	return syscall(SYS_fstatat, AT_FDCWD, path, buf, 0);
+-#endif
+ }
+ 
+ LFS64(stat);
+diff -uNr musl-1.1.20/src/stdio/remove.c musl-1.1.20.mod/src/stdio/remove.c
+--- musl-1.1.20/src/stdio/remove.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stdio/remove.c	2019-01-05 22:05:19.547835479 +0200
+@@ -5,15 +5,7 @@
+ 
+ int remove(const char *path)
+ {
+-#ifdef SYS_unlink
+-	int r = __syscall(SYS_unlink, path);
+-#else
+ 	int r = __syscall(SYS_unlinkat, AT_FDCWD, path, 0);
+-#endif
+-#ifdef SYS_rmdir
+-	if (r==-EISDIR) r = __syscall(SYS_rmdir, path);
+-#else
+ 	if (r==-EISDIR) r = __syscall(SYS_unlinkat, AT_FDCWD, path, AT_REMOVEDIR);
+-#endif
+ 	return __syscall_ret(r);
+ }
+diff -uNr musl-1.1.20/src/stdio/rename.c musl-1.1.20.mod/src/stdio/rename.c
+--- musl-1.1.20/src/stdio/rename.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stdio/rename.c	2019-01-05 22:05:19.547835479 +0200
+@@ -4,9 +4,5 @@
+ 
+ int rename(const char *old, const char *new)
+ {
+-#ifdef SYS_rename
+-	return syscall(SYS_rename, old, new);
+-#else
+ 	return syscall(SYS_renameat, AT_FDCWD, old, AT_FDCWD, new);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/stdio/tempnam.c musl-1.1.20.mod/src/stdio/tempnam.c
+--- musl-1.1.20/src/stdio/tempnam.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stdio/tempnam.c	2019-01-05 22:05:19.547835479 +0200
+@@ -37,12 +37,8 @@
+ 
+ 	for (try=0; try<MAXTRIES; try++) {
+ 		__randname(s+l-6);
+-#ifdef SYS_lstat
+-		r = __syscall(SYS_lstat, s, &(struct stat){0});
+-#else
+ 		r = __syscall(SYS_fstatat, AT_FDCWD, s,
+ 			&(struct stat){0}, AT_SYMLINK_NOFOLLOW);
+-#endif
+ 		if (r == -ENOENT) return strdup(s);
+ 	}
+ 	return 0;
+diff -uNr musl-1.1.20/src/stdio/tmpfile.c musl-1.1.20.mod/src/stdio/tmpfile.c
+--- musl-1.1.20/src/stdio/tmpfile.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stdio/tmpfile.c	2019-01-05 22:05:19.547835479 +0200
+@@ -16,11 +16,7 @@
+ 		__randname(s+13);
+ 		fd = sys_open(s, O_RDWR|O_CREAT|O_EXCL, 0600);
+ 		if (fd >= 0) {
+-#ifdef SYS_unlink
+-			__syscall(SYS_unlink, s);
+-#else
+ 			__syscall(SYS_unlinkat, AT_FDCWD, s, 0);
+-#endif
+ 			f = __fdopen(fd, "w+");
+ 			if (!f) __syscall(SYS_close, fd);
+ 			return f;
+diff -uNr musl-1.1.20/src/stdio/tmpnam.c musl-1.1.20.mod/src/stdio/tmpnam.c
+--- musl-1.1.20/src/stdio/tmpnam.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/stdio/tmpnam.c	2019-01-05 22:05:19.547835479 +0200
+@@ -17,12 +17,8 @@
+ 	int r;
+ 	for (try=0; try<MAXTRIES; try++) {
+ 		__randname(s+12);
+-#ifdef SYS_lstat
+-		r = __syscall(SYS_lstat, s, &(struct stat){0});
+-#else
+ 		r = __syscall(SYS_fstatat, AT_FDCWD, s,
+ 			&(struct stat){0}, AT_SYMLINK_NOFOLLOW);
+-#endif
+ 		if (r == -ENOENT) return strcpy(buf ? buf : internal, s);
+ 	}
+ 	return 0;
+diff -uNr musl-1.1.20/src/unistd/access.c musl-1.1.20.mod/src/unistd/access.c
+--- musl-1.1.20/src/unistd/access.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/access.c	2019-01-05 22:05:19.547835479 +0200
+@@ -4,9 +4,5 @@
+ 
+ int access(const char *filename, int amode)
+ {
+-#ifdef SYS_access
+-	return syscall(SYS_access, filename, amode);
+-#else
+ 	return syscall(SYS_faccessat, AT_FDCWD, filename, amode, 0);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/chown.c musl-1.1.20.mod/src/unistd/chown.c
+--- musl-1.1.20/src/unistd/chown.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/chown.c	2019-01-05 22:05:19.547835479 +0200
+@@ -4,9 +4,5 @@
+ 
+ int chown(const char *path, uid_t uid, gid_t gid)
+ {
+-#ifdef SYS_chown
+-	return syscall(SYS_chown, path, uid, gid);
+-#else
+ 	return syscall(SYS_fchownat, AT_FDCWD, path, uid, gid, 0);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/dup2.c musl-1.1.20.mod/src/unistd/dup2.c
+--- musl-1.1.20/src/unistd/dup2.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/dup2.c	2019-01-05 22:05:19.547835479 +0200
+@@ -6,15 +6,13 @@
+ int dup2(int old, int new)
+ {
+ 	int r;
+-#ifdef SYS_dup2
+-	while ((r=__syscall(SYS_dup2, old, new))==-EBUSY);
+-#else
++
+ 	if (old==new) {
+ 		r = __syscall(SYS_fcntl, old, F_GETFD);
+ 		if (r >= 0) return old;
+ 	} else {
+ 		while ((r=__syscall(SYS_dup3, old, new, 0))==-EBUSY);
+ 	}
+-#endif
++
+ 	return __syscall_ret(r);
+ }
+diff -uNr musl-1.1.20/src/unistd/dup3.c musl-1.1.20.mod/src/unistd/dup3.c
+--- musl-1.1.20/src/unistd/dup3.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/dup3.c	2019-01-05 22:05:19.547835479 +0200
+@@ -8,17 +8,7 @@
+ int __dup3(int old, int new, int flags)
+ {
+ 	int r;
+-#ifdef SYS_dup2
+-	if (old==new) return __syscall_ret(-EINVAL);
+-	if (flags & O_CLOEXEC) {
+-		while ((r=__syscall(SYS_dup3, old, new, flags))==-EBUSY);
+-		if (r!=-ENOSYS) return __syscall_ret(r);
+-	}
+-	while ((r=__syscall(SYS_dup2, old, new))==-EBUSY);
+-	if (flags & O_CLOEXEC) __syscall(SYS_fcntl, new, F_SETFD, FD_CLOEXEC);
+-#else
+ 	while ((r=__syscall(SYS_dup3, old, new, flags))==-EBUSY);
+-#endif
+ 	return __syscall_ret(r);
+ }
+ 
+diff -uNr musl-1.1.20/src/unistd/fchown.c musl-1.1.20.mod/src/unistd/fchown.c
+--- musl-1.1.20/src/unistd/fchown.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/fchown.c	2019-01-05 22:05:19.547835479 +0200
+@@ -13,10 +13,6 @@
+ 
+ 	char buf[15+3*sizeof(int)];
+ 	__procfdname(buf, fd);
+-#ifdef SYS_chown
+-	return syscall(SYS_chown, buf, uid, gid);
+-#else
+ 	return syscall(SYS_fchownat, AT_FDCWD, buf, uid, gid, 0);
+-#endif
+ 
+ }
+diff -uNr musl-1.1.20/src/unistd/lchown.c musl-1.1.20.mod/src/unistd/lchown.c
+--- musl-1.1.20/src/unistd/lchown.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/lchown.c	2019-01-05 22:05:19.551168836 +0200
+@@ -4,9 +4,5 @@
+ 
+ int lchown(const char *path, uid_t uid, gid_t gid)
+ {
+-#ifdef SYS_lchown
+-	return syscall(SYS_lchown, path, uid, gid);
+-#else
+ 	return syscall(SYS_fchownat, AT_FDCWD, path, uid, gid, AT_SYMLINK_NOFOLLOW);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/link.c musl-1.1.20.mod/src/unistd/link.c
+--- musl-1.1.20/src/unistd/link.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/link.c	2019-01-05 22:05:19.551168836 +0200
+@@ -4,9 +4,5 @@
+ 
+ int link(const char *existing, const char *new)
+ {
+-#ifdef SYS_link
+-	return syscall(SYS_link, existing, new);
+-#else
+ 	return syscall(SYS_linkat, AT_FDCWD, existing, AT_FDCWD, new, 0);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/pause.c musl-1.1.20.mod/src/unistd/pause.c
+--- musl-1.1.20/src/unistd/pause.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/pause.c	2019-01-05 22:05:19.551168836 +0200
+@@ -5,9 +5,5 @@
+ 
+ int pause(void)
+ {
+-#ifdef SYS_pause
+-	return syscall_cp(SYS_pause);
+-#else
+ 	return syscall_cp(SYS_ppoll, 0, 0, 0, 0);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/pipe.c musl-1.1.20.mod/src/unistd/pipe.c
+--- musl-1.1.20/src/unistd/pipe.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/pipe.c	2019-01-05 22:05:19.551168836 +0200
+@@ -3,9 +3,5 @@
+ 
+ int pipe(int fd[2])
+ {
+-#ifdef SYS_pipe
+-	return syscall(SYS_pipe, fd);
+-#else
+ 	return syscall(SYS_pipe2, fd, 0);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/readlink.c musl-1.1.20.mod/src/unistd/readlink.c
+--- musl-1.1.20/src/unistd/readlink.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/readlink.c	2019-01-05 22:05:19.551168836 +0200
+@@ -4,9 +4,5 @@
+ 
+ ssize_t readlink(const char *restrict path, char *restrict buf, size_t bufsize)
+ {
+-#ifdef SYS_readlink
+-	return syscall(SYS_readlink, path, buf, bufsize);
+-#else
+ 	return syscall(SYS_readlinkat, AT_FDCWD, path, buf, bufsize);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/rmdir.c musl-1.1.20.mod/src/unistd/rmdir.c
+--- musl-1.1.20/src/unistd/rmdir.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/rmdir.c	2019-01-05 22:05:19.551168836 +0200
+@@ -4,9 +4,5 @@
+ 
+ int rmdir(const char *path)
+ {
+-#ifdef SYS_rmdir
+-	return syscall(SYS_rmdir, path);
+-#else
+ 	return syscall(SYS_unlinkat, AT_FDCWD, path, AT_REMOVEDIR);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/symlink.c musl-1.1.20.mod/src/unistd/symlink.c
+--- musl-1.1.20/src/unistd/symlink.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/symlink.c	2019-01-05 22:05:19.551168836 +0200
+@@ -4,9 +4,5 @@
+ 
+ int symlink(const char *existing, const char *new)
+ {
+-#ifdef SYS_symlink
+-	return syscall(SYS_symlink, existing, new);
+-#else
+ 	return syscall(SYS_symlinkat, existing, AT_FDCWD, new);
+-#endif
+ }
+diff -uNr musl-1.1.20/src/unistd/unlink.c musl-1.1.20.mod/src/unistd/unlink.c
+--- musl-1.1.20/src/unistd/unlink.c	2018-09-04 20:17:19.000000000 +0300
++++ musl-1.1.20.mod/src/unistd/unlink.c	2019-01-05 22:05:19.551168836 +0200
+@@ -4,9 +4,5 @@
+ 
+ int unlink(const char *path)
+ {
+-#ifdef SYS_unlink
+-	return syscall(SYS_unlink, path);
+-#else
+ 	return syscall(SYS_unlinkat, AT_FDCWD, path, 0);
+-#endif
+ }

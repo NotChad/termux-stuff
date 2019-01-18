@@ -1,0 +1,12 @@
+diff -uNr gnupg-2.2.11/tools/send-mail.c gnupg-2.2.11.mod/tools/send-mail.c
+--- gnupg-2.2.11/tools/send-mail.c	2017-08-28 13:22:54.000000000 +0300
++++ gnupg-2.2.11.mod/tools/send-mail.c	2018-12-20 19:53:36.129410264 +0200
+@@ -33,7 +33,7 @@
+ run_sendmail (estream_t data)
+ {
+   gpg_error_t err;
+-  const char pgmname[] = "/usr/lib/sendmail";
++  const char pgmname[] = "@TERMUX_PREFIX@/bin/sendmail";
+   const char *argv[3];
+ 
+   argv[0] = "-oi";

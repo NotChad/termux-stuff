@@ -1,0 +1,20 @@
+diff -uNr gnupg-2.2.11/dirmngr/dirmngr.c gnupg-2.2.11.mod/dirmngr/dirmngr.c
+--- gnupg-2.2.11/dirmngr/dirmngr.c	2018-10-24 21:30:16.000000000 +0300
++++ gnupg-2.2.11.mod/dirmngr/dirmngr.c	2018-12-20 19:42:04.117236931 +0200
+@@ -1072,13 +1072,13 @@
+           log_info (_("Note: '%s' is not considered an option\n"), argv[i]);
+     }
+ 
+-  if (!access ("/etc/"DIRMNGR_NAME, F_OK)
+-      && !strncmp (gnupg_homedir (), "/etc/", 5))
++  if (!access ("@TERMUX_PREFIX@/etc/"DIRMNGR_NAME, F_OK)
++      && !strncmp (gnupg_homedir (), "@TERMUX_PREFIX@/etc/", sizeof("@TERMUX_PREFIX@/etc/")-1))
+     log_info
+       ("NOTE: DirMngr is now a proper part of %s.  The configuration and"
+        " other directory names changed.  Please check that no other version"
+        " of dirmngr is still installed.  To disable this warning, remove the"
+-       " directory '/etc/dirmngr'.\n", GNUPG_NAME);
++       " directory '@TERMUX_PREFIX@/etc/dirmngr'.\n", GNUPG_NAME);
+ 
+   if (gnupg_faked_time_p ())
+     {

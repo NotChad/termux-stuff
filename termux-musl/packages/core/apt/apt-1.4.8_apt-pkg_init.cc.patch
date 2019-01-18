@@ -1,0 +1,107 @@
+diff -uNr apt-1.4.8/apt-pkg/init.cc apt-1.4.8.mod/apt-pkg/init.cc
+--- apt-1.4.8/apt-pkg/init.cc	2017-09-13 19:47:33.000000000 +0300
++++ apt-1.4.8.mod/apt-pkg/init.cc	2018-12-17 23:14:05.694135273 +0200
+@@ -51,73 +51,6 @@
+    return vec;
+ }
+ 
+-
+-// pkgInitArchTupleMap - Initialize the architecture tuple map				/*{{{*/
+-// ---------------------------------------------------------------------
+-/* This initializes */
+-static bool pkgInitArchTupleMap()
+-{
+-   auto tuplepath = _config->FindFile("Dir::dpkg::tupletable", DPKG_DATADIR "/tupletable");
+-   auto tripletpath = _config->FindFile("Dir::dpkg::triplettable", DPKG_DATADIR "/triplettable");
+-   auto cpupath = _config->FindFile("Dir::dpkg::cputable", DPKG_DATADIR "/cputable");
+-
+-   // Load a list of CPUs
+-   std::vector<std::string> cpus;
+-   std::ifstream cputable(cpupath);
+-   for (std::string cpuline; std::getline(cputable, cpuline); )
+-   {
+-      if (cpuline[0] == '#' || cpuline[0] == '\0')
+-         continue;
+-      auto cpurow = split(cpuline);
+-      auto cpu = APT::String::Strip(cpurow.at(0));
+-
+-      cpus.push_back(cpu);
+-   }
+-   if (!cputable.eof())
+-      return _error->Error("Error reading the CPU table");
+-
+-   // Load the architecture tuple
+-   std::ifstream tupletable;
+-   if (FileExists(tuplepath))
+-      tupletable.open(tuplepath);
+-   else if (FileExists(tripletpath))
+-      tupletable.open(tripletpath);
+-   else
+-      return _error->Error("Cannot find dpkg tuplet or triplet table");
+-
+-   APT::ArchToTupleMap.clear();
+-   for (std::string tupleline; std::getline(tupletable, tupleline); )
+-   {
+-      if (tupleline[0] == '#' || tupleline[0] == '\0')
+-         continue;
+-
+-      std::vector<std::string> tuplerow = split(tupleline);
+-
+-      auto tuple = APT::String::Strip(tuplerow.at(0));
+-      auto arch = APT::String::Strip(tuplerow.at(1));
+-
+-      if (tuple.find("<cpu>") == tuple.npos && arch.find("<cpu>") == arch.npos)
+-      {
+-         APT::ArchToTupleMap.insert({arch, VectorizeString(tuple, '-')});
+-      }
+-      else
+-      {
+-         for (auto && cpu : cpus)
+-         {
+-            auto mytuple = SubstVar(tuple, std::string("<cpu>"), cpu);
+-            auto myarch = SubstVar(arch, std::string("<cpu>"), cpu);
+-
+-            APT::ArchToTupleMap.insert({myarch, VectorizeString(mytuple, '-')});
+-         }
+-      }
+-   }
+-   if (!tupletable.eof())
+-      return _error->Error("Error reading the Tuple table");
+-
+-   return true;
+-}
+-									/*}}}*/
+-
+     
+ // pkgInitConfig - Initialize the configuration class			/*{{{*/
+ // ---------------------------------------------------------------------
+@@ -133,6 +66,7 @@
+    Cnf.CndSet("APT::Install-Recommends", true);
+    Cnf.CndSet("APT::Install-Suggests", false);
+    Cnf.CndSet("Dir","/");
++   Cnf.CndSet("Acquire::Languages", "none");
+    
+    // State
+    Cnf.CndSet("Dir::State", STATE_DIR + 1);
+@@ -158,9 +92,9 @@
+    Cnf.CndSet("Dir::Etc::trusted", "trusted.gpg");
+    Cnf.CndSet("Dir::Etc::trustedparts","trusted.gpg.d");
+    Cnf.CndSet("Dir::Bin::methods", LIBEXEC_DIR "/methods");
+-   Cnf.CndSet("Dir::Bin::solvers::",LIBEXEC_DIR  "/solvers");
+-   Cnf.CndSet("Dir::Bin::planners::",LIBEXEC_DIR  "/planners");
+-   Cnf.CndSet("Dir::Media::MountPath","/media/apt");
++   Cnf.CndSet("Dir::Bin::solvers::",LIBEXEC_DIR "/solvers");
++   Cnf.CndSet("Dir::Bin::planners::", LIBEXEC_DIR "/planners");
++   Cnf.CndSet("Dir::Media::MountPath","media/apt");
+ 
+    // State
+    Cnf.CndSet("Dir::Log", LOG_DIR + 1);
+@@ -283,8 +217,6 @@
+ 	 return _error->Error(_("Unable to determine a suitable packaging system type"));
+    }
+ 
+-   if (pkgInitArchTupleMap() == false)
+-      return false;
+    
+    return Sys->Initialize(Cnf);
+ }

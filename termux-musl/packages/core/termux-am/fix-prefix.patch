@@ -1,0 +1,19 @@
+diff -uNr TermuxAm-0.2/am-apk-installed TermuxAm-0.2.mod/am-apk-installed
+--- TermuxAm-0.2/am-apk-installed	2018-02-05 19:24:14.000000000 +0200
++++ TermuxAm-0.2.mod/am-apk-installed	2019-01-13 13:44:06.187574943 +0200
+@@ -1,4 +1,4 @@
+-#!/data/data/com.termux/files/usr/bin/sh
++#!@TERMUX_PREFIX@/bin/sh
+ export CLASSPATH=$(pm path com.example.termuxam|cut -d: -f2)
+ unset LD_LIBRARY_PATH LD_PRELOAD
+ exec /system/bin/app_process / com.example.termuxam.Am "$@"
+diff -uNr TermuxAm-0.2/am-libexec-packaged TermuxAm-0.2.mod/am-libexec-packaged
+--- TermuxAm-0.2/am-libexec-packaged	2018-02-05 19:24:14.000000000 +0200
++++ TermuxAm-0.2.mod/am-libexec-packaged	2019-01-13 13:44:31.610641915 +0200
+@@ -1,4 +1,4 @@
+-#!/data/data/com.termux/files/usr/bin/sh
+-export CLASSPATH=/data/data/com.termux/files/usr/libexec/termux-am/am.apk
++#!@TERMUX_PREFIX@/bin/sh
++export CLASSPATH=@TERMUX_PREFIX@/libexec/termux-am/am.apk
+ unset LD_LIBRARY_PATH LD_PRELOAD
+ exec /system/bin/app_process / com.example.termuxam.Am "$@"

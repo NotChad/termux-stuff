@@ -1,0 +1,5 @@
+export ANDROID_HOME="/opt/termux/android-sdk"
+export TERMUX_ANDROID_BUILD_TOOLS_VERSION="28.0.2"
+export TERMUX_PKG_API_LEVEL="21"
+export TERMUX_HOME="/data/data/com.termux.musl/files/home"
+export TERMUX_PREFIX="/data/data/com.termux.musl/files/usr"

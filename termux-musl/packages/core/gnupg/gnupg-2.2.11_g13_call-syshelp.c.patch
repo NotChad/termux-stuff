@@ -1,0 +1,12 @@
+diff -uNr gnupg-2.2.11/g13/call-syshelp.c gnupg-2.2.11.mod/g13/call-syshelp.c
+--- gnupg-2.2.11/g13/call-syshelp.c	2018-06-12 14:25:39.000000000 +0300
++++ gnupg-2.2.11.mod/g13/call-syshelp.c	2018-12-20 19:14:53.245452158 +0200
+@@ -136,7 +136,7 @@
+     argv[2] = "gnupg-g13-syshelp";
+     argv[3] = NULL;
+ 
+-    err = assuan_pipe_connect (ctx, "/usr/bin/userv", argv,
++    err = assuan_pipe_connect (ctx, "@TERMUX_PREFIX@/bin/userv", argv,
+                                no_close_list, NULL, NULL, 0);
+   }
+   if (err)

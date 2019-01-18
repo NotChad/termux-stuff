@@ -1,0 +1,1014 @@
+diff -uNr binutils-2.31.1/bfd/ChangeLog binutils-2.31.1.mod/bfd/ChangeLog
+--- binutils-2.31.1/bfd/ChangeLog	2018-07-18 10:50:08.000000000 +0300
++++ binutils-2.31.1.mod/bfd/ChangeLog	2019-01-11 23:54:02.510513636 +0200
+@@ -1,3 +1,11 @@
++2018-07-23  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR ld/23428
++	* elfxx-x86.c (_bfd_x86_elf_link_setup_gnu_properties): If the
++	separate code program header is needed, make sure that the first
++	read-only PT_LOAD segment has no code by adding a
++	GNU_PROPERTY_X86_ISA_1_USED note.
++
+ 2018-07-18  Nick Clifton  <nickc@redhat.com>
+ 
+ 	2.31.1 Release point.
+diff -uNr binutils-2.31.1/bfd/elfxx-x86.c binutils-2.31.1.mod/bfd/elfxx-x86.c
+--- binutils-2.31.1/bfd/elfxx-x86.c	2018-07-10 10:12:05.000000000 +0300
++++ binutils-2.31.1.mod/bfd/elfxx-x86.c	2019-01-11 23:54:25.645577826 +0200
+@@ -2407,12 +2407,27 @@
+   switch (pr_type)
+     {
+     case GNU_PROPERTY_X86_ISA_1_USED:
++      if (aprop == NULL || bprop == NULL)
++	{
++	  /* Only one of APROP and BPROP can be NULL.  */
++	  if (aprop != NULL)
++	    {
++	      /* Remove this property since the other input file doesn't
++		 have it.  */
++	      aprop->pr_kind = property_remove;
++	      updated = TRUE;
++	    }
++	  break;
++	}
++      goto or_property;
++
+     case GNU_PROPERTY_X86_ISA_1_NEEDED:
+       if (aprop != NULL && bprop != NULL)
+ 	{
++or_property:
+ 	  number = aprop->u.number;
+ 	  aprop->u.number = number | bprop->u.number;
+-	  /* Remove the property if ISA bits are empty.  */
++	  /* Remove the property if all bits are empty.  */
+ 	  if (aprop->u.number == 0)
+ 	    {
+ 	      aprop->pr_kind = property_remove;
+@@ -2428,14 +2443,14 @@
+ 	    {
+ 	      if (aprop->u.number == 0)
+ 		{
+-		  /* Remove APROP if ISA bits are empty.  */
++		  /* Remove APROP if all bits are empty.  */
+ 		  aprop->pr_kind = property_remove;
+ 		  updated = TRUE;
+ 		}
+ 	    }
+ 	  else
+ 	    {
+-	      /* Return TRUE if APROP is NULL and ISA bits of BPROP
++	      /* Return TRUE if APROP is NULL and all bits of BPROP
+ 		 aren't empty to indicate that BPROP should be added
+ 		 to ABFD.  */
+ 	      updated = bprop->u.number != 0;
+@@ -2524,6 +2539,7 @@
+   const struct elf_backend_data *bed;
+   unsigned int class_align = ABI_64_P (info->output_bfd) ? 3 : 2;
+   unsigned int got_align;
++  bfd_boolean has_text = FALSE;
+ 
+   features = 0;
+   if (info->ibt)
+@@ -2538,24 +2554,75 @@
+     if (bfd_get_flavour (pbfd) == bfd_target_elf_flavour
+ 	&& bfd_count_sections (pbfd) != 0)
+       {
++	if (!has_text)
++	  {
++	    /* Check if there is no non-empty text section.  */
++	    sec = bfd_get_section_by_name (pbfd, ".text");
++	    if (sec != NULL && sec->size != 0)
++	      has_text = TRUE;
++	  }
++
+ 	ebfd = pbfd;
+ 
+ 	if (elf_properties (pbfd) != NULL)
+ 	  break;
+       }
+ 
+-  if (ebfd != NULL && features)
++  bed = get_elf_backend_data (info->output_bfd);
++
++  htab = elf_x86_hash_table (info, bed->target_id);
++  if (htab == NULL)
++    return pbfd;
++
++  if (ebfd != NULL)
+     {
+-      /* If features is set, add GNU_PROPERTY_X86_FEATURE_1_IBT and
+-	 GNU_PROPERTY_X86_FEATURE_1_SHSTK.  */
+-      prop = _bfd_elf_get_property (ebfd,
+-				    GNU_PROPERTY_X86_FEATURE_1_AND,
+-				    4);
+-      prop->u.number |= features;
+-      prop->pr_kind = property_number;
++      prop = NULL;
++      if (features)
++	{
++	  /* If features is set, add GNU_PROPERTY_X86_FEATURE_1_IBT and
++	     GNU_PROPERTY_X86_FEATURE_1_SHSTK.  */
++	  prop = _bfd_elf_get_property (ebfd,
++					GNU_PROPERTY_X86_FEATURE_1_AND,
++					4);
++	  prop->u.number |= features;
++	  prop->pr_kind = property_number;
++	}
++      else if (has_text
++	       && elf_tdata (info->output_bfd)->o->build_id.sec == NULL
++	       && !htab->elf.dynamic_sections_created
++	       && !info->traditional_format
++	       && (info->output_bfd->flags & D_PAGED) != 0
++	       && info->separate_code)
++	{
++	  /* If the separate code program header is needed, make sure
++	     that the first read-only PT_LOAD segment has no code by
++	     adding a GNU_PROPERTY_X86_ISA_1_NEEDED note.  */
++	  elf_property_list *list;
++	  bfd_boolean need_property = TRUE;
++
++	  for (list = elf_properties (ebfd); list; list = list->next)
++	    switch (list->property.pr_type)
++	      {
++	      case GNU_PROPERTY_STACK_SIZE:
++	      case GNU_PROPERTY_NO_COPY_ON_PROTECTED:
++	      case GNU_PROPERTY_X86_ISA_1_NEEDED:
++		/* These properties won't be removed during merging.  */
++		need_property = FALSE;
++		break;
++	      }
++
++	  if (need_property)
++	    {
++	      prop = _bfd_elf_get_property (ebfd,
++					    GNU_PROPERTY_X86_ISA_1_NEEDED,
++					    4);
++	      prop->u.number = GNU_PROPERTY_X86_ISA_1_486;
++	      prop->pr_kind = property_number;
++	    }
++	}
+ 
+       /* Create the GNU property note section if needed.  */
+-      if (pbfd == NULL)
++      if (prop != NULL && pbfd == NULL)
+ 	{
+ 	  sec = bfd_make_section_with_flags (ebfd,
+ 					     NOTE_GNU_PROPERTY_SECTION_NAME,
+@@ -2581,12 +2648,6 @@
+ 
+   pbfd = _bfd_elf_link_setup_gnu_properties (info);
+ 
+-  bed = get_elf_backend_data (info->output_bfd);
+-
+-  htab = elf_x86_hash_table (info, bed->target_id);
+-  if (htab == NULL)
+-    return pbfd;
+-
+   htab->r_info = init_table->r_info;
+   htab->r_sym = init_table->r_sym;
+ 
+diff -uNr binutils-2.31.1/gold/configure.tgt binutils-2.31.1.mod/gold/configure.tgt
+--- binutils-2.31.1/gold/configure.tgt	2018-06-24 21:38:57.000000000 +0300
++++ binutils-2.31.1.mod/gold/configure.tgt	2019-01-11 23:54:42.040111030 +0200
+@@ -153,6 +153,13 @@
+  targ_big_endian=false
+  targ_extra_big_endian=true
+  ;;
++mips*64*el*-*-*|mips*64*le*-*-*)
++ targ_obj=mips
++ targ_machine=EM_MIPS_RS3_LE
++ targ_size=64
++ targ_big_endian=false
++ targ_extra_big_endian=true
++ ;;
+ mips*el*-*-*|mips*le*-*-*)
+  targ_obj=mips
+  targ_machine=EM_MIPS_RS3_LE
+@@ -160,6 +167,13 @@
+  targ_big_endian=false
+  targ_extra_big_endian=true
+  ;;
++mips*64*-*-*)
++ targ_obj=mips
++ targ_machine=EM_MIPS
++ targ_size=64
++ targ_big_endian=true
++ targ_extra_big_endian=false
++ ;;
+ mips*-*-*)
+  targ_obj=mips
+  targ_machine=EM_MIPS
+diff -uNr binutils-2.31.1/ld/ChangeLog binutils-2.31.1.mod/ld/ChangeLog
+--- binutils-2.31.1/ld/ChangeLog	2018-07-18 10:51:35.000000000 +0300
++++ binutils-2.31.1.mod/ld/ChangeLog	2019-01-11 23:54:02.517180808 +0200
+@@ -1,3 +1,27 @@
++2018-07-23  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR ld/23428
++	* testsuite/ld-elf/linux-x86.S: New file.
++	* testsuite/ld-elf/linux-x86.exp: Likewise.
++	* testsuite/ld-elf/pr23428.c: Likewise.
++	* testsuite/ld-elf/sec64k.exp: Pass "-z noseparate-code" to ld
++	for Linux/x86 targets.
++	* testsuite/ld-i386/abs-iamcu.d: Likewise.
++	* testsuite/ld-i386/abs.d: Likewise.
++	* testsuite/ld-i386/pr12718.d: Likewise.
++	* testsuite/ld-i386/pr12921.d: Likewise.
++	* testsuite/ld-x86-64/abs-k1om.d: Likewise.
++	* testsuite/ld-x86-64/abs-l1om.d: Likewise.
++	* testsuite/ld-x86-64/abs.d: Likewise.
++	* testsuite/ld-x86-64/pr12718.d: Likewise.
++	* testsuite/ld-x86-64/pr12921.d: Likewise.
++	* testsuite/ld-linkonce/zeroeh.ld: Discard .note.gnu.property
++	section.
++	* testsuite/ld-scripts/print-memory-usage.t: Likewise.
++	* testsuite/ld-scripts/size-2.t: Likewise.
++	* testsuite/lib/ld-lib.exp (run_ld_link_exec_tests): Use ld to
++	create executable if language is "asm".
++
+ 2018-07-18  Nick Clifton  <nickc@redhat.com>
+ 
+ 	2.31.1 Release point.
+diff -uNr binutils-2.31.1/ld/scripttempl/elf.sc binutils-2.31.1.mod/ld/scripttempl/elf.sc
+--- binutils-2.31.1/ld/scripttempl/elf.sc	2018-07-11 18:43:55.000000000 +0300
++++ binutils-2.31.1.mod/ld/scripttempl/elf.sc	2019-01-11 23:54:34.499561849 +0200
+@@ -254,8 +254,8 @@
+ if test "${ENABLE_INITFINI_ARRAY}" = "yes"; then
+   SORT_INIT_ARRAY="KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))"
+   SORT_FINI_ARRAY="KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))"
+-  CTORS_IN_INIT_ARRAY="EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o $OTHER_EXCLUDE_FILES) .ctors"
+-  DTORS_IN_FINI_ARRAY="EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o $OTHER_EXCLUDE_FILES) .dtors"
++  CTORS_IN_INIT_ARRAY="EXCLUDE_FILE (*crtbegin*.o *crtend*.o $OTHER_EXCLUDE_FILES) .ctors"
++  DTORS_IN_FINI_ARRAY="EXCLUDE_FILE (*crtbegin*.o *crtend*.o $OTHER_EXCLUDE_FILES) .dtors"
+ else
+   SORT_INIT_ARRAY="KEEP (*(SORT(.init_array.*)))"
+   SORT_FINI_ARRAY="KEEP (*(SORT(.fini_array.*)))"
+@@ -289,15 +289,14 @@
+        doesn't matter which directory crtbegin.o
+        is in.  */
+ 
+-    KEEP (*crtbegin.o(.ctors))
+-    KEEP (*crtbegin?.o(.ctors))
++    KEEP (*crtbegin*.o(.ctors))
+ 
+     /* We don't want to include the .ctor section from
+        the crtend.o file until after the sorted ctors.
+        The .ctor section from the crtend file contains the
+        end of ctors marker and it must be last */
+ 
+-    KEEP (*(EXCLUDE_FILE (*crtend.o *crtend?.o $OTHER_EXCLUDE_FILES) .ctors))
++    KEEP (*(EXCLUDE_FILE (*crtend*.o $OTHER_EXCLUDE_FILES) .ctors))
+     KEEP (*(SORT(.ctors.*)))
+     KEEP (*(.ctors))
+     ${CONSTRUCTING+${CTOR_END}}
+@@ -305,9 +304,8 @@
+ DTOR=".dtors        ${CONSTRUCTING-0} :
+   {
+     ${CONSTRUCTING+${DTOR_START}}
+-    KEEP (*crtbegin.o(.dtors))
+-    KEEP (*crtbegin?.o(.dtors))
+-    KEEP (*(EXCLUDE_FILE (*crtend.o *crtend?.o $OTHER_EXCLUDE_FILES) .dtors))
++    KEEP (*crtbegin*.o(.dtors))
++    KEEP (*(EXCLUDE_FILE (*crtend*.o $OTHER_EXCLUDE_FILES) .dtors))
+     KEEP (*(SORT(.dtors.*)))
+     KEEP (*(.dtors))
+     ${CONSTRUCTING+${DTOR_END}}
+diff -uNr binutils-2.31.1/ld/testsuite/ld-elf/dummy.s binutils-2.31.1.mod/ld/testsuite/ld-elf/dummy.s
+--- binutils-2.31.1/ld/testsuite/ld-elf/dummy.s	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-elf/dummy.s	2019-01-11 23:54:25.645577826 +0200
+@@ -0,0 +1 @@
++# Dummy
+diff -uNr binutils-2.31.1/ld/testsuite/ld-elf/linux-x86.exp binutils-2.31.1.mod/ld/testsuite/ld-elf/linux-x86.exp
+--- binutils-2.31.1/ld/testsuite/ld-elf/linux-x86.exp	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-elf/linux-x86.exp	2019-01-11 23:54:25.645577826 +0200
+@@ -0,0 +1,46 @@
++# Expect script for simple native Linux/x86 tests.
++#   Copyright (C) 2018 Free Software Foundation, Inc.
++#
++# This file is part of the GNU Binutils.
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston,
++# MA 02110-1301, USA.
++#
++
++# Test very simple native Linux/x86 programs with linux-x86.S.
++if { ![isnative] || [which $CC] == 0 \
++     || (![istarget "i?86-*-linux*"] \
++         && ![istarget "x86_64-*-linux*"] \
++         && ![istarget "amd64-*-linux*"]) } {
++    return
++}
++
++# Add $PLT_CFLAGS if PLT is expected.
++global PLT_CFLAGS
++# Add $NOPIE_CFLAGS and $NOPIE_LDFLAGS if non-PIE is required.
++global NOPIE_CFLAGS NOPIE_LDFLAGS
++
++run_ld_link_exec_tests [list \
++    [list \
++	"Run PR ld/23428 test" \
++	"--no-dynamic-linker -z separate-code" \
++	"" \
++	{ linux-x86.S pr23428.c dummy.s } \
++	"pr23428" \
++	"pass.out" \
++	"$NOPIE_CFLAGS -fno-asynchronous-unwind-tables" \
++	"asm" \
++    ] \
++]
+diff -uNr binutils-2.31.1/ld/testsuite/ld-elf/linux-x86.S binutils-2.31.1.mod/ld/testsuite/ld-elf/linux-x86.S
+--- binutils-2.31.1/ld/testsuite/ld-elf/linux-x86.S	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-elf/linux-x86.S	2019-01-11 23:54:25.645577826 +0200
+@@ -0,0 +1,91 @@
++	.text
++	.globl _start
++	.type _start,@function
++	.p2align 4
++_start:
++	xorl %ebp, %ebp
++#ifdef __LP64__
++	popq %rdi
++	movq %rsp, %rsi
++	andq  $~15, %rsp
++#elif defined __x86_64__
++	mov (%rsp),%edi
++	addl $4,%esp
++	movl %esp, %esi
++	andl  $~15, %esp
++#else
++	popl %esi
++	movl %esp, %ecx
++	andl  $~15, %esp
++
++	subl $8,%esp
++	pushl %ecx
++	pushl %esi
++#endif
++
++	call main
++
++	hlt
++
++	.type syscall,  @function
++	.globl syscall
++	.p2align 4
++syscall:
++#ifdef __x86_64__
++	movq %rdi, %rax		/* Syscall number -> rax.  */
++	movq %rsi, %rdi		/* shift arg1 - arg5.  */
++	movq %rdx, %rsi
++	movq %rcx, %rdx
++	movq %r8, %r10
++	movq %r9, %r8
++	movq 8(%rsp),%r9	/* arg6 is on the stack.  */
++	syscall			/* Do the system call.  */
++#else
++	push %ebp
++	push %edi
++	push %esi
++	push %ebx
++	mov 0x2c(%esp),%ebp
++	mov 0x28(%esp),%edi
++	mov 0x24(%esp),%esi
++	mov 0x20(%esp),%edx
++	mov 0x1c(%esp),%ecx
++	mov 0x18(%esp),%ebx
++	mov 0x14(%esp),%eax
++	int $0x80
++	pop %ebx
++	pop %esi
++	pop %edi
++	pop %ebp
++#endif
++	ret			/* Return to caller.  */
++	.size syscall, .-syscall
++	.section .note.GNU-stack,"",@progbits
++
++	.section ".note.gnu.property", "a"
++#ifdef __LP64__
++	.p2align 3
++#else
++	.p2align 2
++#endif
++	.long 1f - 0f		/* name length */
++	.long 5f - 2f		/* data length */
++	.long 5			/* note type */
++0:	.asciz "GNU"		/* vendor name */
++1:
++#ifdef __LP64__
++	.p2align 3
++#else
++	.p2align 2
++#endif
++2:	.long 0xc0000002	/* pr_type.  */
++	.long 4f - 3f		/* pr_datasz.  */
++3:
++	.long 0x2
++4:
++#ifdef __LP64__
++	.p2align 3
++#else
++	.p2align 2
++#endif
++5:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-elf/pr23428.c binutils-2.31.1.mod/ld/testsuite/ld-elf/pr23428.c
+--- binutils-2.31.1/ld/testsuite/ld-elf/pr23428.c	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-elf/pr23428.c	2019-01-11 23:54:02.517180808 +0200
+@@ -0,0 +1,43 @@
++#include <unistd.h>
++#include <link.h>
++#include <syscall.h>
++
++#define STRING_COMMA_LEN(STR) (STR), (sizeof (STR) - 1)
++
++int
++main (int argc, char **argv)
++{
++  char **ev = &argv[argc + 1];
++  char **evp = ev;
++  ElfW(auxv_t) *av;
++  const ElfW(Phdr) *phdr = NULL;
++  size_t phnum = 0;
++  size_t loadnum = 0;
++  int fd = STDOUT_FILENO;
++  size_t i;
++
++  while (*evp++ != NULL)
++    ;
++
++  av = (ElfW(auxv_t) *) evp;
++
++  for (; av->a_type != AT_NULL; ++av)
++    switch (av->a_type)
++      {
++      case AT_PHDR:
++	phdr = (const void *) av->a_un.a_val;
++	break;
++      case AT_PHNUM:
++	phnum = av->a_un.a_val;
++	break;
++      }
++
++  for (i = 0; i < phnum; i++, phdr++)
++    if (phdr->p_type == PT_LOAD)
++      loadnum++;
++
++  syscall (SYS_write, fd, STRING_COMMA_LEN ("PASS\n"));
++
++  syscall (SYS_exit, !loadnum);
++  return 0;
++}
+diff -uNr binutils-2.31.1/ld/testsuite/ld-elf/sec64k.exp binutils-2.31.1.mod/ld/testsuite/ld-elf/sec64k.exp
+--- binutils-2.31.1/ld/testsuite/ld-elf/sec64k.exp	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-elf/sec64k.exp	2019-01-11 23:54:02.520514394 +0200
+@@ -177,6 +177,8 @@
+     foreach sfile $sfiles { puts $ofd "#source: $sfile" }
+     if { [istarget spu*-*-*] } {
+ 	puts $ofd "#ld: --local-store 0:0"
++    } elseif { [istarget "i?86-*-linux*"] || [istarget "x86_64-*-linux*"] } {
++	puts $ofd "#ld: -z noseparate-code"
+     } else {
+ 	puts $ofd "#ld:"
+     }
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/abs.d binutils-2.31.1.mod/ld/testsuite/ld-i386/abs.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/abs.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/abs.d	2019-01-11 23:54:02.520514394 +0200
+@@ -2,7 +2,7 @@
+ #as: --32
+ #source: abs.s
+ #source: zero.s
+-#ld: -melf_i386
++#ld: -melf_i386 -z noseparate-code
+ #objdump: -rs
+ 
+ .*:     file format .*
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/abs-iamcu.d binutils-2.31.1.mod/ld/testsuite/ld-i386/abs-iamcu.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/abs-iamcu.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/abs-iamcu.d	2019-01-11 23:54:02.520514394 +0200
+@@ -2,7 +2,7 @@
+ #source: abs.s
+ #source: zero.s
+ #as: --32 -march=iamcu
+-#ld: -m elf_iamcu
++#ld: -m elf_iamcu -z noseparate-code
+ #objdump: -rs -j .text
+ 
+ .*:     file format .*
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/i386.exp binutils-2.31.1.mod/ld/testsuite/ld-i386/i386.exp
+--- binutils-2.31.1/ld/testsuite/ld-i386/i386.exp	2018-07-10 10:12:05.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/i386.exp	2019-01-11 23:54:14.988119404 +0200
+@@ -462,6 +462,8 @@
+ run_dump_test "pr23194"
+ run_dump_test "pr23372a"
+ run_dump_test "pr23372b"
++run_dump_test "pr23486a"
++run_dump_test "pr23486b"
+ 
+ if { !([istarget "i?86-*-linux*"]
+        || [istarget "i?86-*-gnu*"]
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/pr12718.d binutils-2.31.1.mod/ld/testsuite/ld-i386/pr12718.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/pr12718.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/pr12718.d	2019-01-11 23:54:02.520514394 +0200
+@@ -1,6 +1,6 @@
+ #name: PR ld/12718
+ #as: --32
+-#ld: -melf_i386
++#ld: -melf_i386 -z noseparate-code
+ #readelf: -S
+ 
+ There are 5 section headers, starting at offset 0x[0-9a-f]+:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/pr12921.d binutils-2.31.1.mod/ld/testsuite/ld-i386/pr12921.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/pr12921.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/pr12921.d	2019-01-11 23:54:02.520514394 +0200
+@@ -1,6 +1,6 @@
+ #name: PR ld/12921
+ #as: --32
+-#ld: -melf_i386
++#ld: -melf_i386 -z noseparate-code
+ #readelf: -S --wide
+ 
+ There are 7 section headers, starting at offset 0x[0-9a-f]+:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/pr23486a.d binutils-2.31.1.mod/ld/testsuite/ld-i386/pr23486a.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/pr23486a.d	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/pr23486a.d	2019-01-11 23:54:14.988119404 +0200
+@@ -0,0 +1,10 @@
++#source: ../ld-x86-64/pr23486a.s
++#source: ../ld-x86-64/pr23486b.s
++#as: --32
++#ld: -r -m elf_i386
++#readelf: -n
++
++Displaying notes found in: .note.gnu.property
++  Owner                 Data size	Description
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/pr23486b.d binutils-2.31.1.mod/ld/testsuite/ld-i386/pr23486b.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/pr23486b.d	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/pr23486b.d	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,10 @@
++#source: ../ld-x86-64/pr23486b.s
++#source: ../ld-x86-64/pr23486a.s
++#as: --32
++#ld: -r -m elf_i386
++#readelf: -n
++
++Displaying notes found in: .note.gnu.property
++  Owner                 Data size	Description
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-3.r binutils-2.31.1.mod/ld/testsuite/ld-i386/property-3.r
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-3.r	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-3.r	2019-01-11 23:54:14.991452987 +0200
+@@ -3,6 +3,5 @@
+   Owner                 Data size	Description
+   GNU                  0x[0-9a-f]+	NT_GNU_PROPERTY_TYPE_0
+       Properties: stack size: 0x800000
+-	x86 ISA used: 586, SSE
+ 	x86 ISA needed: i486, 586
+ #pass
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-4.r binutils-2.31.1.mod/ld/testsuite/ld-i386/property-4.r
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-4.r	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-4.r	2019-01-11 23:54:14.991452987 +0200
+@@ -3,6 +3,5 @@
+   Owner                 Data size	Description
+   GNU                  0x[0-9a-f]+	NT_GNU_PROPERTY_TYPE_0
+       Properties: stack size: 0x800000
+-	x86 ISA used: i486, 586, SSE
+ 	x86 ISA needed: i486, 586, SSE
+ #pass
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-5.r binutils-2.31.1.mod/ld/testsuite/ld-i386/property-5.r
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-5.r	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-5.r	2019-01-11 23:54:14.991452987 +0200
+@@ -3,6 +3,5 @@
+   Owner                 Data size	Description
+   GNU                  0x[0-9a-f]+	NT_GNU_PROPERTY_TYPE_0
+       Properties: stack size: 0x900000
+-	x86 ISA used: i486, 586, SSE
+ 	x86 ISA needed: i486, 586, SSE
+ #pass
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-x86-ibt3a.d binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-ibt3a.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-x86-ibt3a.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-ibt3a.d	2019-01-11 23:54:14.991452987 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: i486, 586, SSE2, SSE3
+-	x86 ISA needed: 586, SSE, SSE3, SSE4_1
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: 586, SSE, SSE3, SSE4_1
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-x86-ibt3b.d binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-ibt3b.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-x86-ibt3b.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-ibt3b.d	2019-01-11 23:54:14.991452987 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: i486, 586, SSE2, SSE3
+-	x86 ISA needed: 586, SSE, SSE3, SSE4_1
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: 586, SSE, SSE3, SSE4_1
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-x86-shstk3a.d binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-shstk3a.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-x86-shstk3a.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-shstk3a.d	2019-01-11 23:54:14.991452987 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: i486, 586, SSE2, SSE3
+-	x86 ISA needed: 586, SSE, SSE3, SSE4_1
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: 586, SSE, SSE3, SSE4_1
+diff -uNr binutils-2.31.1/ld/testsuite/ld-i386/property-x86-shstk3b.d binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-shstk3b.d
+--- binutils-2.31.1/ld/testsuite/ld-i386/property-x86-shstk3b.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-i386/property-x86-shstk3b.d	2019-01-11 23:54:14.991452987 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: i486, 586, SSE2, SSE3
+-	x86 ISA needed: 586, SSE, SSE3, SSE4_1
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: 586, SSE, SSE3, SSE4_1
+diff -uNr binutils-2.31.1/ld/testsuite/ld-linkonce/zeroeh.ld binutils-2.31.1.mod/ld/testsuite/ld-linkonce/zeroeh.ld
+--- binutils-2.31.1/ld/testsuite/ld-linkonce/zeroeh.ld	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-linkonce/zeroeh.ld	2019-01-11 23:54:02.520514394 +0200
+@@ -2,4 +2,5 @@
+  .text 0xa00 : { *(.text); *(.gnu.linkonce.t.*) }
+  .gcc_except_table 0x2000 : { *(.gcc_except_table) }
+  .eh_frame 0x4000 : { *(.eh_frame) }
++  /DISCARD/ : { *(.note.gnu.property) }
+ }
+diff -uNr binutils-2.31.1/ld/testsuite/ld-scripts/print-memory-usage.t binutils-2.31.1.mod/ld/testsuite/ld-scripts/print-memory-usage.t
+--- binutils-2.31.1/ld/testsuite/ld-scripts/print-memory-usage.t	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-scripts/print-memory-usage.t	2019-01-11 23:54:02.520514394 +0200
+@@ -11,4 +11,6 @@
+     *(.data)
+     *(.rw)
+   }
++
++  /DISCARD/ : { *(.note.gnu.property) }
+ }
+diff -uNr binutils-2.31.1/ld/testsuite/ld-scripts/size-2.t binutils-2.31.1.mod/ld/testsuite/ld-scripts/size-2.t
+--- binutils-2.31.1/ld/testsuite/ld-scripts/size-2.t	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-scripts/size-2.t	2019-01-11 23:54:02.520514394 +0200
+@@ -18,4 +18,5 @@
+     LONG (SIZEOF (.tdata))
+     LONG (SIZEOF (.tbss))
+   } :image
++  /DISCARD/ : { *(.note.gnu.property) }
+ }
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/abs.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/abs.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/abs.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/abs.d	2019-01-11 23:54:02.520514394 +0200
+@@ -1,7 +1,7 @@
+ #name: Absolute non-overflowing relocs
+ #source: ../ld-i386/abs.s
+ #source: ../ld-i386/zero.s
+-#ld:
++#ld: -z noseparate-code
+ #objdump: -rs
+ 
+ .*:     file format .*
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/abs-k1om.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/abs-k1om.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/abs-k1om.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/abs-k1om.d	2019-01-11 23:54:02.520514394 +0200
+@@ -2,7 +2,7 @@
+ #source: ../ld-i386/abs.s
+ #source: ../ld-i386/zero.s
+ #as: --64 -march=k1om
+-#ld: -m elf_k1om
++#ld: -m elf_k1om -z noseparate-code
+ #objdump: -rs -j .text
+ 
+ .*:     file format .*
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/abs-l1om.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/abs-l1om.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/abs-l1om.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/abs-l1om.d	2019-01-11 23:54:02.520514394 +0200
+@@ -2,7 +2,7 @@
+ #source: ../ld-i386/abs.s
+ #source: ../ld-i386/zero.s
+ #as: --64 -march=l1om
+-#ld: -m elf_l1om
++#ld: -m elf_l1om -z noseparate-code
+ #objdump: -rs -j .text
+ #target: x86_64-*-linux*
+ 
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr12718.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr12718.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr12718.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr12718.d	2019-01-11 23:54:02.520514394 +0200
+@@ -1,6 +1,6 @@
+ #name: PR ld/12718
+ #as: --64
+-#ld: -melf_x86_64
++#ld: -melf_x86_64 -z noseparate-code
+ #readelf: -S --wide
+ 
+ There are 5 section headers, starting at offset 0x[0-9a-f]+:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr12921.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr12921.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr12921.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr12921.d	2019-01-11 23:54:02.520514394 +0200
+@@ -1,6 +1,6 @@
+ #name: PR ld/12921
+ #as: --64
+-#ld: -melf_x86_64
++#ld: -melf_x86_64 -z noseparate-code
+ #readelf: -S --wide
+ 
+ There are 7 section headers, starting at offset 0x[0-9a-f]+:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486a.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486a.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486a.d	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486a.d	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,10 @@
++#source: pr23486a.s
++#source: pr23486b.s
++#as: --64 -defsym __64_bit__=1
++#ld: -r -m elf_x86_64
++#readelf: -n
++
++Displaying notes found in: .note.gnu.property
++  Owner                 Data size	Description
++  GNU                  0x00000010	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486a.s binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486a.s
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486a.s	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486a.s	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,30 @@
++	.section ".note.gnu.property", "a"
++.ifdef __64_bit__
++	.p2align 3
++.else
++	.p2align 2
++.endif
++	.long 1f - 0f		/* name length.  */
++	.long 4f - 1f		/* data length.  */
++	/* NT_GNU_PROPERTY_TYPE_0 */
++	.long 5			/* note type.  */
++0:
++	.asciz "GNU"		/* vendor name.  */
++1:
++.ifdef __64_bit__
++	.p2align 3
++.else
++	.p2align 2
++.endif
++	/* GNU_PROPERTY_X86_ISA_1_USED */
++	.long 0xc0000000	/* pr_type.  */
++	.long 3f - 2f		/* pr_datasz.  */
++2:
++	.long 0xa
++3:
++.ifdef __64_bit__
++	.p2align 3
++.else
++	.p2align 2
++.endif
++4:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486a-x32.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486a-x32.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486a-x32.d	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486a-x32.d	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,10 @@
++#source: pr23486a.s
++#source: pr23486b.s
++#as: --x32
++#ld: -r -m elf32_x86_64
++#readelf: -n
++
++Displaying notes found in: .note.gnu.property
++  Owner                 Data size	Description
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486b.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486b.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486b.d	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486b.d	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,10 @@
++#source: pr23486a.s
++#source: pr23486b.s
++#as: --64 -defsym __64_bit__=1
++#ld: -r -m elf_x86_64
++#readelf: -n
++
++Displaying notes found in: .note.gnu.property
++  Owner                 Data size	Description
++  GNU                  0x00000010	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486b.s binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486b.s
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486b.s	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486b.s	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,30 @@
++	.section ".note.gnu.property", "a"
++.ifdef __64_bit__
++	.p2align 3
++.else
++	.p2align 2
++.endif
++	.long 1f - 0f		/* name length.  */
++	.long 4f - 1f		/* data length.  */
++	/* NT_GNU_PROPERTY_TYPE_0 */
++	.long 5			/* note type.  */
++0:
++	.asciz "GNU"		/* vendor name.  */
++1:
++.ifdef __64_bit__
++	.p2align 3
++.else
++	.p2align 2
++.endif
++	/* GNU_PROPERTY_X86_ISA_1_NEEDED */
++	.long 0xc0000001	/* pr_type.  */
++	.long 3f - 2f		/* pr_datasz.  */
++2:
++	.long 0x3
++3:
++.ifdef __64_bit__
++	.p2align 3
++.else
++	.p2align 2
++.endif
++4:
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486b-x32.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486b-x32.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/pr23486b-x32.d	1970-01-01 03:00:00.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/pr23486b-x32.d	2019-01-11 23:54:14.991452987 +0200
+@@ -0,0 +1,10 @@
++#source: pr23486b.s
++#source: pr23486a.s
++#as: --x32
++#ld: -r -m elf32_x86_64
++#readelf: -n
++
++Displaying notes found in: .note.gnu.property
++  Owner                 Data size	Description
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-3.r binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-3.r
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-3.r	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-3.r	2019-01-11 23:54:14.991452987 +0200
+@@ -3,6 +3,5 @@
+   Owner                 Data size	Description
+   GNU                  0x[0-9a-f]+	NT_GNU_PROPERTY_TYPE_0
+       Properties: stack size: 0x800000
+-	x86 ISA used: 586, SSE
+ 	x86 ISA needed: i486, 586
+ #pass
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-4.r binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-4.r
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-4.r	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-4.r	2019-01-11 23:54:14.994786570 +0200
+@@ -3,6 +3,5 @@
+   Owner                 Data size	Description
+   GNU                  0x[0-9a-f]+	NT_GNU_PROPERTY_TYPE_0
+       Properties: stack size: 0x800000
+-	x86 ISA used: i486, 586, SSE
+ 	x86 ISA needed: i486, 586, SSE
+ #pass
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-5.r binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-5.r
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-5.r	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-5.r	2019-01-11 23:54:14.994786570 +0200
+@@ -3,6 +3,5 @@
+   Owner                 Data size	Description
+   GNU                  0x[0-9a-f]+	NT_GNU_PROPERTY_TYPE_0
+       Properties: stack size: 0x900000
+-	x86 ISA used: i486, 586, SSE
+ 	x86 ISA needed: i486, 586, SSE
+ #pass
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3a.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3a.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3a.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3a.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000020	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x00000010	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3a-x32.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3a-x32.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3a-x32.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3a-x32.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3b.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3b.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3b.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3b.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000020	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x00000010	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3b-x32.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3b-x32.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-ibt3b-x32.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-ibt3b-x32.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3a.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3a.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3a.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3a.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000020	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x00000010	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3a-x32.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3a-x32.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3a-x32.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3a-x32.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3b.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3b.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3b.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3b.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000020	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x00000010	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3b-x32.d binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3b-x32.d
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/property-x86-shstk3b-x32.d	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/property-x86-shstk3b-x32.d	2019-01-11 23:54:14.994786570 +0200
+@@ -6,6 +6,5 @@
+ 
+ Displaying notes found in: .note.gnu.property
+   Owner                 Data size	Description
+-  GNU                  0x00000018	NT_GNU_PROPERTY_TYPE_0
+-      Properties: x86 ISA used: 586, SSE, SSE3, SSE4_1
+-	x86 ISA needed: i486, 586, SSE2, SSE3
++  GNU                  0x0000000c	NT_GNU_PROPERTY_TYPE_0
++      Properties: x86 ISA needed: i486, 586, SSE2, SSE3
+diff -uNr binutils-2.31.1/ld/testsuite/ld-x86-64/x86-64.exp binutils-2.31.1.mod/ld/testsuite/ld-x86-64/x86-64.exp
+--- binutils-2.31.1/ld/testsuite/ld-x86-64/x86-64.exp	2018-07-10 10:12:05.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/ld-x86-64/x86-64.exp	2019-01-11 23:54:14.994786570 +0200
+@@ -403,6 +403,10 @@
+ run_dump_test "pr23372a-x32"
+ run_dump_test "pr23372b"
+ run_dump_test "pr23372b-x32"
++run_dump_test "pr23486a"
++run_dump_test "pr23486a-x32"
++run_dump_test "pr23486b"
++run_dump_test "pr23486b-x32"
+ 
+ if { ![istarget "x86_64-*-linux*"] && ![istarget "x86_64-*-nacl*"]} {
+     return
+diff -uNr binutils-2.31.1/ld/testsuite/lib/ld-lib.exp binutils-2.31.1.mod/ld/testsuite/lib/ld-lib.exp
+--- binutils-2.31.1/ld/testsuite/lib/ld-lib.exp	2018-06-24 21:38:58.000000000 +0300
++++ binutils-2.31.1.mod/ld/testsuite/lib/ld-lib.exp	2019-01-11 23:54:02.523847981 +0200
+@@ -1482,7 +1482,10 @@
+ 	    continue
+ 	}
+ 
+-	if { [ string match "c++" $lang ] } {
++	if { [ string match "asm" $lang ] } {
++	    set link_proc ld_link
++	    set link_cmd $ld
++	} elseif { [ string match "c++" $lang ] } {
+ 	    set link_proc ld_link
+ 	    set link_cmd $CXX
+ 	} else {

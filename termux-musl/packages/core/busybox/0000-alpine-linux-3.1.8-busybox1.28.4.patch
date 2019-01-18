@@ -1,0 +1,1588 @@
+Set of busybox patches from Alpine Linux v3.8.1.
+
+diff -uNr busybox-1.28.4/archival/cpio.c busybox-1.28.4.mod/archival/cpio.c
+--- busybox-1.28.4/archival/cpio.c	2018-04-01 14:04:11.000000000 +0300
++++ busybox-1.28.4.mod/archival/cpio.c	2018-12-23 19:34:47.303515249 +0200
+@@ -39,7 +39,7 @@
+ //config:	help
+ //config:	Passthrough mode. Rarely used.
+ 
+-//applet:IF_CPIO(APPLET(cpio, BB_DIR_BIN, BB_SUID_DROP))
++//applet:IF_CPIO(APPLET(cpio, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_CPIO) += cpio.o
+ 
+diff -uNr busybox-1.28.4/coreutils/cat.c busybox-1.28.4.mod/coreutils/cat.c
+--- busybox-1.28.4/coreutils/cat.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/coreutils/cat.c	2018-12-23 19:34:47.290182006 +0200
+@@ -112,10 +112,10 @@
+ 	int retval = EXIT_SUCCESS;
+ 	int fd;
+ #if ENABLE_FEATURE_CATN
+-	unsigned lineno = 0;
+-	unsigned eol_char = (opts & (CAT_OPT_n|CAT_OPT_b)) ? '\n' : 0x100;
++	bool eol_seen = (opts & (CAT_OPT_n|CAT_OPT_b));
++	unsigned eol_char = (eol_seen ? '\n' : 0x100);
+ 	unsigned skip_num_on = (opts & CAT_OPT_b) ? '\n' : 0x100;
+-	bool eol_seen = 1;
++	unsigned lineno = 0;
+ #endif
+ 
+ 	BUILD_BUG_ON(CAT_OPT_e != VISIBLE_ENDLINE);
+diff -uNr busybox-1.28.4/e2fsprogs/fsck.c busybox-1.28.4.mod/e2fsprogs/fsck.c
+--- busybox-1.28.4/e2fsprogs/fsck.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/e2fsprogs/fsck.c	2018-12-23 19:34:47.296848627 +0200
+@@ -60,6 +60,7 @@
+ //usage:     "\n	-t TYPE	List of filesystem types to check"
+ 
+ #include "libbb.h"
++#include "volume_id.h"
+ #include "common_bufsiz.h"
+ 
+ /* "progress indicator" code is somewhat buggy and ext[23] specific.
+@@ -523,12 +524,13 @@
+  * Execute a particular fsck program, and link it into the list of
+  * child processes we are waiting for.
+  */
+-static void execute(const char *type, const char *device,
++static void execute(const char *type, const char *spec,
+ 		const char *mntpt /*, int interactive */)
+ {
+ 	int i;
+ 	struct fsck_instance *inst;
+ 	pid_t pid;
++	char *device = (char *)spec;
+ 
+ 	G.args[0] = xasprintf("fsck.%s", type);
+ 
+@@ -543,7 +545,8 @@
+ 	}
+ #endif
+ 
+-	G.args[G.num_args - 2] = (char*)device;
++	resolve_mount_spec(&device);
++	G.args[G.num_args - 2] = device;
+ 	/* G.args[G.num_args - 1] = NULL; - already is */
+ 
+ 	if (G.verbose || G.noexecute) {
+@@ -972,9 +975,6 @@
+ 
+ 		/* "/dev/blk" or "/path" or "UUID=xxx" or "LABEL=xxx" */
+ 		if ((arg[0] == '/' && !opts_for_fsck) || strchr(arg, '=')) {
+-// FIXME: must check that arg is a blkdev, or resolve
+-// "/path", "UUID=xxx" or "LABEL=xxx" into block device name
+-// ("UUID=xxx"/"LABEL=xxx" can probably shifted to fsck.auto duties)
+ 			devices = xrealloc_vector(devices, 2, num_devices);
+ 			devices[num_devices++] = arg;
+ 			continue;
+diff -uNr busybox-1.28.4/editors/diff.c busybox-1.28.4.mod/editors/diff.c
+--- busybox-1.28.4/editors/diff.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/editors/diff.c	2018-12-23 19:34:47.323515113 +0200
+@@ -113,6 +113,9 @@
+ //usage:     "\n	-N	Treat absent files as empty"
+ //usage:     "\n	-q	Output only whether files differ"
+ //usage:     "\n	-r	Recurse"
++//usage:        IF_LONG_OPTS(
++//usage:     "\n        --no-dereference Don't follow symlinks"
++//usage:        )
+ //usage:     "\n	-S	Start with FILE when comparing directories"
+ //usage:     "\n	-T	Make tabs line up by prefixing a tab when necessary"
+ //usage:     "\n	-s	Report when two files are the same"
+@@ -154,6 +157,7 @@
+ 	FLAG_p,         /* not implemented */
+ 	FLAG_B,
+ 	FLAG_E,         /* not implemented */
++	FLAG_no_deref,
+ };
+ #define FLAG(x) (1 << FLAG_##x)
+ 
+@@ -867,7 +871,8 @@
+ 		 * Using list.len to specify its length,
+ 		 * add_to_dirlist will remove it. */
+ 		list[i].len = strlen(p[i]);
+-		recursive_action(p[i], ACTION_RECURSE | ACTION_FOLLOWLINKS,
++		recursive_action(p[i], ACTION_RECURSE |
++			((option_mask32 & FLAG(no_deref)) ? 0 : ACTION_FOLLOWLINKS),
+ 				add_to_dirlist, skip_dir, &list[i], 0);
+ 		/* Sort dl alphabetically.
+ 		 * GNU diff does this ignoring any number of trailing dots.
+@@ -964,6 +969,7 @@
+ 	"report-identical-files\0"   No_argument       "s"
+ 	"starting-file\0"            Required_argument "S"
+ 	"minimal\0"                  No_argument       "d"
++	"no-dereference\0"           No_argument       "\xff"
+ 	;
+ # define GETOPT32 getopt32long
+ # define LONGOPTS ,diff_longopts
+diff -uNr busybox-1.28.4/editors/vi.c busybox-1.28.4.mod/editors/vi.c
+--- busybox-1.28.4/editors/vi.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/editors/vi.c	2018-12-23 19:34:47.306848560 +0200
+@@ -161,7 +161,7 @@
+ //config:	Unless you want more (or less) frequent "undo points" while typing,
+ //config:	you should probably leave this unchanged.
+ 
+-//applet:IF_VI(APPLET(vi, BB_DIR_BIN, BB_SUID_DROP))
++//applet:IF_VI(APPLET(vi, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_VI) += vi.o
+ 
+diff -uNr busybox-1.28.4/miscutils/fbsplash.c busybox-1.28.4.mod/miscutils/fbsplash.c
+--- busybox-1.28.4/miscutils/fbsplash.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/miscutils/fbsplash.c	2018-12-23 19:34:47.316848492 +0200
+@@ -47,34 +47,68 @@
+ //kbuild:lib-$(CONFIG_FBSPLASH) += fbsplash.o
+ 
+ //usage:#define fbsplash_trivial_usage
+-//usage:       "-s IMGFILE [-c] [-d DEV] [-i INIFILE] [-f CMD]"
++//usage:       "-s IMGFILE [-c] [-d DEV] [-i INIFILE] [-f CMD] [-T tty]"
+ //usage:#define fbsplash_full_usage "\n\n"
+ //usage:       "	-s	Image"
+ //usage:     "\n	-c	Hide cursor"
+ //usage:     "\n	-d	Framebuffer device (default /dev/fb0)"
+ //usage:     "\n	-i	Config file (var=value):"
++//usage:     "\n			IMAGE_ALIGN"
+ //usage:     "\n			BAR_LEFT,BAR_TOP,BAR_WIDTH,BAR_HEIGHT"
+ //usage:     "\n			BAR_R,BAR_G,BAR_B"
+ //usage:     "\n	-f	Control pipe (else exit after drawing image)"
+ //usage:     "\n			commands: 'NN' (% for progress bar) or 'exit'"
++//usage:     "\n	-T	Switch to TTY to hide all console messages"
+ 
+ #include "libbb.h"
+ #include "common_bufsiz.h"
+ #include <linux/fb.h>
+ 
++#include <sys/vt.h>
++#include <sys/ioctl.h>
++#include <linux/tiocl.h>
++#include <linux/kd.h>
++
+ /* If you want logging messages on /tmp/fbsplash.log... */
+ #define DEBUG 0
+ 
+ #define ESC "\033"
+ 
++enum {
++	image_align,
++
++	image_posx,
++	image_posy,
++	bar_width,
++	bar_height,
++	bar_posx,
++	bar_posy,
++	bar_colr,
++	bar_colg,
++	bar_colb,
++
++	debug
++};
++
++#define nimage_align	ns[image_align]
++#define nbar_width	ns[bar_width]
++#define nbar_height	ns[bar_height]
++#define nbar_posx	ns[bar_posx]
++#define nbar_posy	ns[bar_posy]
++#define nbar_colr	ns[bar_colr]
++#define nbar_colg	ns[bar_colg]
++#define nbar_colb	ns[bar_colb]
++
+ struct globals {
+ #if DEBUG
+ 	bool bdebug_messages;	// enable/disable logging
+ 	FILE *logfile_fd;	// log file
+ #endif
+ 	unsigned char *addr;	// pointer to framebuffer memory
+-	unsigned ns[7];		// n-parameters
++	unsigned ns[debug+1];		// n-parameters
+ 	const char *image_filename;
++	int silent_tty, fd_tty_s;
++	bool do_not_draw;
+ 	struct fb_var_screeninfo scr_var;
+ 	struct fb_fix_screeninfo scr_fix;
+ 	unsigned bytes_per_pixel;
+@@ -88,14 +122,6 @@
+ 	SET_PTR_TO_GLOBALS(xzalloc(sizeof(G))); \
+ } while (0)
+ 
+-#define nbar_width	ns[0]	// progress bar width
+-#define nbar_height	ns[1]	// progress bar height
+-#define nbar_posx	ns[2]	// progress bar horizontal position
+-#define nbar_posy	ns[3]	// progress bar vertical position
+-#define nbar_colr	ns[4]	// progress bar color red component
+-#define nbar_colg	ns[5]	// progress bar color green component
+-#define nbar_colb	ns[6]	// progress bar color blue component
+-
+ #if DEBUG
+ #define DEBUG_MESSAGE(strMessage, args...) \
+ 	if (G.bdebug_messages) { \
+@@ -376,7 +402,7 @@
+ 	FILE *theme_file;
+ 	char *read_ptr;
+ 	unsigned char *pixline;
+-	unsigned i, j, width, height, line_size;
++	int i, j, width, height, line_size, xoffs, yoffs, xstart;
+ 
+ 	if (LONE_DASH(G.image_filename)) {
+ 		theme_file = stdin;
+@@ -426,18 +452,46 @@
+ 	line_size = width*3;
+ 	pixline = xmalloc(line_size);
+ 
++#if 0
+ 	if (width > G.scr_var.xres)
+ 		width = G.scr_var.xres;
+ 	if (height > G.scr_var.yres)
+ 		height = G.scr_var.yres;
+-	for (j = 0; j < height; j++) {
++#endif
++
++	xoffs = yoffs = 0;
++	switch (G.nimage_align % 3) {
++	case 1: xoffs = (G.scr_var.xres - width) / 2; break;
++	case 2: xoffs = G.scr_var.xres - width; break;
++	}
++	xstart = 0;
++	if (xoffs < 0) {
++		xstart = -xoffs;
++		width -= xstart;
++		xoffs = 0;
++	}
++	xoffs *= G.bytes_per_pixel;
++	if (width > G.scr_var.xres)
++		width = G.scr_var.xres;
++
++	switch (G.nimage_align / 3) {
++	case 1: yoffs = (G.scr_var.yres - height) / 2; break;
++	case 2: yoffs = G.scr_var.yres - height; break;
++	}
++
++	for (j = 0; j < height && yoffs < G.scr_var.yres; j++, yoffs++) {
+ 		unsigned char *pixel;
+ 		unsigned char *src;
+ 
+ 		if (fread(pixline, 1, line_size, theme_file) != line_size)
+ 			bb_error_msg_and_die("bad PPM file '%s'", G.image_filename);
++
++		if (yoffs < 0)
++			continue;
++
+ 		pixel = pixline;
+-		src = G.addr + j * G.scr_fix.line_length;
++		src = G.addr + yoffs * G.scr_fix.line_length + xoffs;
++
+ 		for (i = 0; i < width; i++) {
+ 			unsigned thispix = fb_pixel_value(pixel[0], pixel[1], pixel[2]);
+ 			fb_write_pixel(src, thispix);
+@@ -456,9 +510,17 @@
+  */
+ static void init(const char *cfg_filename)
+ {
++	static const char align_names[] ALIGN1 =
++		"LT\0" "CT\0" "RT\0"
++		"LM\0" "CM\0" "RM\0"
++		"LB\0" "CB\0" "RB\0";
+ 	static const char param_names[] ALIGN1 =
++		"IMAGE_ALIGN\0"
++
++		"IMAGE_X\0" "IMAGE_Y\0"
+ 		"BAR_WIDTH\0" "BAR_HEIGHT\0"
+ 		"BAR_LEFT\0" "BAR_TOP\0"
++
+ 		"BAR_R\0" "BAR_G\0" "BAR_B\0"
+ #if DEBUG
+ 		"DEBUG\0"
+@@ -468,14 +530,21 @@
+ 	parser_t *parser = config_open2(cfg_filename, xfopen_stdin);
+ 	while (config_read(parser, token, 2, 2, "#=",
+ 				(PARSE_NORMAL | PARSE_MIN_DIE) & ~(PARSE_TRIM | PARSE_COLLAPSE))) {
+-		unsigned val = xatoi_positive(token[1]);
++		unsigned val;
+ 		int i = index_in_strings(param_names, token[0]);
++
+ 		if (i < 0)
+ 			bb_error_msg_and_die("syntax error: %s", token[0]);
+-		if (i >= 0 && i < 7)
++
++		if (i <= image_align)
++			val = index_in_strings(align_names, token[1]);
++		else
++			val = xatoi_positive(token[1]);
++
++		if (i < debug)
+ 			G.ns[i] = val;
+ #if DEBUG
+-		if (i == 7) {
++		if (i == debug) {
+ 			G.bdebug_messages = val;
+ 			if (G.bdebug_messages)
+ 				G.logfile_fd = xfopen_for_write("/tmp/fbsplash.log");
+@@ -485,6 +554,11 @@
+ 	config_close(parser);
+ }
+ 
++static void sighandler(int sig)
++{
++	ioctl(G.fd_tty_s, VT_RELDISP, sig == SIGUSR1 ? 1 : 2);
++	G.do_not_draw = (sig != SIGUSR2);
++}
+ 
+ int fbsplash_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int fbsplash_main(int argc UNUSED_PARAM, char **argv)
+@@ -494,6 +568,9 @@
+ 	char *num_buf;
+ 	unsigned num;
+ 	bool bCursorOff;
++	int fd_tty0, active_vt;
++	struct vt_stat vtstat;
++	struct vt_mode vt;
+ 
+ 	INIT_G();
+ 
+@@ -501,8 +578,9 @@
+ 	fb_device = "/dev/fb0";
+ 	cfg_filename = NULL;
+ 	fifo_filename = NULL;
+-	bCursorOff = 1 & getopt32(argv, "cs:d:i:f:",
+-			&G.image_filename, &fb_device, &cfg_filename, &fifo_filename);
++	bCursorOff = 1 & getopt32(argv, "cs:d:i:f:T:",
++			&G.image_filename, &fb_device, &cfg_filename, &fifo_filename,
++			&G.silent_tty);
+ 
+ 	// parse configuration file
+ 	if (cfg_filename)
+@@ -512,11 +590,43 @@
+ 	if (!G.image_filename)
+ 		bb_show_usage();
+ 
++	fd_tty0 = get_console_fd_or_die();
++	if (G.silent_tty) {
++		char buf[16];
++
++		/* Initialize TTY */
++		bb_signals((1LL << SIGUSR1) | (1LL << SIGUSR2), sighandler);
++		snprintf(buf, sizeof(buf), "/dev/tty%d", G.silent_tty);
++		G.fd_tty_s = xopen(buf, O_RDWR | O_NOCTTY);
++
++		/* Activate TTY */
++		xioctl(fd_tty0, VT_GETSTATE, &vtstat);
++		active_vt = vtstat.v_active;
++		console_make_active(fd_tty0, G.silent_tty);
++
++		/* Get notifications on console changes */
++		vt.mode   = VT_PROCESS;
++		vt.waitv  = 0;
++		vt.relsig = SIGUSR1;
++		vt.acqsig = SIGUSR2;
++		ioctl(G.fd_tty_s, VT_SETMODE, &vt);
++
++		/* Redirect all kernel messages to tty1 so that they don't get
++		 * printed over our silent splash image. And clear it. */
++		buf[0] = TIOCL_SETKMSGREDIRECT;
++		buf[1] = 1;
++		ioctl(G.fd_tty_s, TIOCLINUX, buf);
++		full_write(G.fd_tty_s, "\e[H\e[2J" "\e[?17;0c", 7+8);
++		ioctl(G.fd_tty_s, KDSETMODE, KD_GRAPHICS);
++	} else {
++		G.fd_tty_s = STDOUT_FILENO;
++	}
++
+ 	fb_open(fb_device);
+ 
+ 	if (fifo_filename && bCursorOff) {
+ 		// hide cursor (BEFORE any fb ops)
+-		full_write(STDOUT_FILENO, ESC"[?25l", 6);
++		full_write(G.fd_tty_s, ESC"[?25l", 6);
+ 	}
+ 
+ 	fb_drawimage();
+@@ -524,6 +634,7 @@
+ 	if (!fifo_filename)
+ 		return EXIT_SUCCESS;
+ 
++	sig_block(SIGUSR1);
+ 	fp = xfopen_stdin(fifo_filename);
+ 	if (fp != stdin) {
+ 		// For named pipes, we want to support this:
+@@ -539,8 +650,9 @@
+ 		// and become an additional writer :)
+ 		open(fifo_filename, O_WRONLY); // errors are ignored
+ 	}
+-
+ 	fb_drawprogressbar(0);
++	sig_unblock(SIGUSR1);
++
+ 	// Block on read, waiting for some input.
+ 	// Use of <stdio.h> style I/O allows to correctly
+ 	// handle a case when we have many buffered lines
+@@ -555,12 +667,29 @@
+ #if DEBUG
+ 			DEBUG_MESSAGE(itoa(num));
+ #endif
+-			fb_drawprogressbar(num);
++			sig_block(SIGUSR1);
++			if (!G.do_not_draw)
++				fb_drawprogressbar(num);
++			sig_unblock(SIGUSR1);
+ 		}
+ 		free(num_buf);
+ 	}
+ 
+-	if (bCursorOff) // restore cursor
++	if (G.silent_tty) {
++		usleep(100*1000);
++
++		ioctl(G.fd_tty_s, VT_RELDISP, 1);
++		ioctl(G.fd_tty_s, KDSETMODE, KD_TEXT);
++		vt.mode  = VT_AUTO;
++		vt.waitv = 0;
++		ioctl(G.fd_tty_s, VT_SETMODE, &vt);
++		close(G.fd_tty_s);
++
++		xioctl(fd_tty0, VT_GETSTATE, &vtstat);
++		if (vtstat.v_active == G.silent_tty)
++			console_make_active(fd_tty0, active_vt);
++		ioctl(fd_tty0, VT_DISALLOCATE, (void *)(ptrdiff_t)G.silent_tty);
++	} else if (bCursorOff) // restore cursor
+ 		full_write(STDOUT_FILENO, ESC"[?25h", 6);
+ 
+ 	return EXIT_SUCCESS;
+diff -uNr busybox-1.28.4/miscutils/microcom.c busybox-1.28.4.mod/miscutils/microcom.c
+--- busybox-1.28.4/miscutils/microcom.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/miscutils/microcom.c	2018-12-23 19:34:47.330181735 +0200
+@@ -76,6 +76,11 @@
+ //	argc -= optind;
+ 	argv += optind;
+ 
++	if (*argv == NULL){
++		bb_show_usage();
++		return EXIT_FAILURE;
++	}
++
+ 	// try to create lock file in /var/lock
+ 	device_lock_file = (char *)bb_basename(argv[0]);
+ 	device_lock_file = xasprintf("/var/lock/LCK..%s", device_lock_file);
+diff -uNr busybox-1.28.4/modutils/Config.src busybox-1.28.4.mod/modutils/Config.src
+--- busybox-1.28.4/modutils/Config.src	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/modutils/Config.src	2018-12-23 19:34:47.316848492 +0200
+@@ -152,6 +152,15 @@
+ 
+ 	Say Y if unsure.
+ 
++config FEATURE_MODUTILS_BIN
++	bool "Support for the kmod .bin file format"
++	default n
++	depends on DEPMOD && !MODPROBE_SMALL
++	help
++	  Generate kmod compatible binary index files for .dep, .alias,
++	  .symbols and .builtin files. Allows mixing use of busybox
++	  modutils and kmod (binaries and library).
++
+ config FEATURE_MODUTILS_SYMBOLS
+ 	bool "Support module.symbols file"
+ 	default y
+diff -uNr busybox-1.28.4/modutils/depmod.c busybox-1.28.4.mod/modutils/depmod.c
+--- busybox-1.28.4/modutils/depmod.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/modutils/depmod.c	2018-12-23 19:34:47.316848492 +0200
+@@ -2,7 +2,7 @@
+ /*
+  * depmod - generate modules.dep
+  * Copyright (c) 2008 Bernhard Reutner-Fischer
+- * Copyrihgt (c) 2008 Timo Teras <timo.teras@iki.fi>
++ * Copyrihgt (c) 2008-2015 Timo Teras <timo.teras@iki.fi>
+  * Copyright (c) 2008 Vladimir Dronnikov
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+@@ -26,6 +26,24 @@
+ #include "modutils.h"
+ #include <sys/utsname.h> /* uname() */
+ 
++#define INDEX_MINCHAR	32
++#define INDEX_MAXCHAR	128
++
++typedef struct index_node {
++	char *prefix;
++	llist_t *values;
++	struct index_node *children[INDEX_MAXCHAR-INDEX_MINCHAR];
++} index_node;
++
++struct globals {
++	module_db db;
++	index_node *root_node;
++} FIX_ALIASING;
++#define G (*ptr_to_globals)
++#define INIT_G() do { \
++	SET_PTR_TO_GLOBALS(xzalloc(sizeof(G))); \
++} while (0)
++
+ /*
+  * Theory of operation:
+  * - iterate over all modules and record their full path
+@@ -53,18 +71,12 @@
+ 
+ 	for (ptr = image; ptr < image + len - 10; ptr++) {
+ 		if (is_prefixed_with(ptr, "depends=")) {
+-			char *u;
+-
+ 			ptr += 8;
+-			for (u = ptr; *u; u++)
+-				if (*u == '-')
+-					*u = '_';
+-			ptr += string_to_llist(ptr, &e->deps, ",");
++			string_to_llist(replace_underscores(ptr), &e->deps, ",");
+ 		} else if (ENABLE_FEATURE_MODUTILS_ALIAS
+ 		 && is_prefixed_with(ptr, "alias=")
+ 		) {
+-			llist_add_to(&e->aliases, xstrdup(ptr + 6));
+-			ptr += strlen(ptr);
++			llist_add_to(&e->aliases, replace_underscores(xstrdup(ptr + 6)));
+ 		} else if (ENABLE_FEATURE_MODUTILS_SYMBOLS
+ 		 && is_prefixed_with(ptr, "__ksymtab_")
+ 		) {
+@@ -74,9 +86,10 @@
+ 			) {
+ 				continue;
+ 			}
+-			llist_add_to(&e->symbols, xstrdup(ptr));
+-			ptr += strlen(ptr);
+-		}
++			llist_add_to(&e->symbols, xasprintf("symbol:%s", ptr));
++		} else
++			continue;
++		ptr += strlen(ptr);
+ 	}
+ 	free(image);
+ 
+@@ -108,12 +121,6 @@
+ 	}
+ }
+ 
+-static void xfreopen_write(const char *file, FILE *f)
+-{
+-	if (freopen(file, "w", f) == NULL)
+-		bb_perror_msg_and_die("can't open '%s'", file);
+-}
+-
+ //usage:#if !ENABLE_MODPROBE_SMALL
+ //usage:#define depmod_trivial_usage "[-n] [-b BASE] [VERSION] [MODFILES]..."
+ //usage:#define depmod_full_usage "\n\n"
+@@ -167,6 +174,169 @@
+ 	OPT_C = (1 << 9), /* -C,--config etc_modules_conf: ignored */
+ };
+ 
++/* Support for the mod binary index generation */
++
++static void index_init(const char *filename)
++{
++	if (ENABLE_FEATURE_MODUTILS_BIN) {
++		index_node *n;
++
++		n = xzalloc(sizeof(index_node));
++		n->prefix = xstrdup("");
++		G.root_node = n;
++	}
++
++	if (filename && !(option_mask32 & OPT_n)) {
++		if (freopen(filename, "w", stdout) == NULL)
++			bb_perror_msg_and_die("can't open '%s'", filename);
++	}
++}
++
++static void index_add(const char *key, char *value, const char *prefix)
++{
++	if (prefix && *prefix)
++		printf("%s%s %s\n", prefix, key, value);
++	else if (prefix)
++		printf("%s\n", value);
++
++	if (ENABLE_FEATURE_MODUTILS_BIN) {
++		index_node *cur = G.root_node, *n;
++		unsigned i = 0, j, ch;
++
++		while (1) {
++			/* Ensure node->prefix is a prefix of &str[i].
++			 * If it is not already, then we must split node. */
++			for (j = 0; cur->prefix[j]; j++) {
++				ch = cur->prefix[j];
++				if (ch != key[i+j]) {
++					/* New child is copy of node with prefix[j+1..N] */
++					n = xzalloc(sizeof(index_node));
++					n->prefix = xstrdup(&cur->prefix[j+1]);
++					n->values = cur->values;
++					memcpy(n->children, cur->children, sizeof(n->children));
++
++					/* Parent has prefix[0..j], child at prefix[j] */
++					cur->prefix[j] = '\0';
++					cur->values = NULL;
++					memset(cur->children, 0, sizeof(cur->children));
++					cur->children[ch-INDEX_MINCHAR] = n;
++					break;
++				}
++			}
++			i += j;
++
++			ch = key[i];
++			if (ch == 0)
++				break;
++
++			if (ch < INDEX_MINCHAR || ch >= INDEX_MAXCHAR)
++				bb_error_msg_and_die("bad module name");
++
++			ch -= INDEX_MINCHAR;
++			if (!cur->children[ch]) {
++				n = xzalloc(sizeof(index_node));
++				cur->children[ch] = n;
++				n->prefix = xstrdup(&key[i+1]);
++				cur = n;
++				break;
++			}
++
++			/* Descend into child node and continue */
++			cur = cur->children[ch];
++			i++;
++		}
++
++		llist_add_to(&cur->values, value);
++	}
++}
++
++static uint32_t index_write_node(FILE *out, index_node *n, void (*freeit)(void *data))
++{
++	uint32_t child_offs[INDEX_MAXCHAR-INDEX_MINCHAR];
++	uint32_t offset;
++	uint8_t first = 255, last = 0;
++	unsigned i;
++
++	for (i = 0; i < INDEX_MAXCHAR-INDEX_MINCHAR; i++) {
++		child_offs[i] = 0;
++		if (!n->children[i])
++			continue;
++		child_offs[i] = index_write_node(out, n->children[i], freeit);
++		if (first > INDEX_MAXCHAR)
++			first = i;
++		last = i;
++	}
++
++	offset = ftell(out);
++
++	if (n->prefix[0]) {
++		fputs(n->prefix, out);
++		fputc('\0', out);
++		offset |= INDEX_NODE_PREFIX;
++	}
++
++	if (first < INDEX_MAXCHAR) {
++		fputc(first + INDEX_MINCHAR, out);
++		fputc(last + INDEX_MINCHAR, out);
++		fwrite(child_offs + first, sizeof(uint32_t), last - first + 1, out);
++		offset |= INDEX_NODE_CHILDS;
++	}
++
++	if (n->values) {
++		const llist_t *v;
++		unsigned int cnt;
++		uint32_t u;
++
++		n->values = llist_rev(n->values);
++		for (v = n->values, cnt = 0; v != NULL; v = v->link, cnt++);
++		u = htonl(cnt);
++		fwrite(&u, sizeof(u), 1, out);
++		for (v = n->values, cnt = 0; v != NULL; v = v->link, cnt++) {
++			u = htonl(cnt);
++			fwrite(&u, sizeof(u), 1, out);
++			fputs(v->data, out);
++			fputc('\0', out);
++		}
++		offset |= INDEX_NODE_VALUES;
++	}
++
++	llist_free(n->values, freeit);
++	free(n->prefix);
++	free(n);
++
++	return htonl(offset);
++}
++
++static void index_dump(const char *filename, int deps_file)
++{
++	if (ENABLE_FEATURE_MODUTILS_BIN) {
++		FILE *out;
++		uint32_t header[3] = {
++			htonl(INDEX_MAGIC),
++			htonl(INDEX_VERSION),
++		};
++
++		if (option_mask32 & OPT_n)
++			filename = "/dev/null";
++		else
++			filename = xasprintf("tmp.%s.bin", filename);
++
++		out = xfopen_for_write(filename);
++		fwrite(header, sizeof(uint32_t), 3, out);
++		header[2] = index_write_node(out, G.root_node, deps_file ? free : 0);
++		rewind(out);
++		G.root_node = NULL;
++		fwrite(header, sizeof(uint32_t), 3, out);
++		if (fclose(out)) {
++			remove(filename);
++			bb_error_msg_and_die(bb_msg_write_error);
++		}
++		/* .bin files are mmap'ed; not renaming it may crash
++		 * long standing daemon using libkmod */
++		rename_or_warn(filename, filename + 4);
++	}
++}
++
+ int depmod_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int depmod_main(int argc UNUSED_PARAM, char **argv)
+ {
+@@ -178,6 +348,8 @@
+ 	unsigned i;
+ 	int tmp;
+ 
++	INIT_G();
++
+ 	getopt32(argv, "aAb:eF:nruqC:", &moddir_base, NULL, NULL);
+ 	argv += optind;
+ 
+@@ -210,53 +382,60 @@
+ 	}
+ 
+ 	/* Generate dependency and alias files */
+-	if (!(option_mask32 & OPT_n))
+-		xfreopen_write(CONFIG_DEFAULT_DEPMOD_FILE, stdout);
+-
++	index_init(CONFIG_DEFAULT_DEPMOD_FILE);
+ 	moddb_foreach_module(&modules, m, i) {
+-		printf("%s:", m->name);
+-
++		char *buf = xasprintf("%s:", m->name);
+ 		order_dep_list(&modules, m, m->deps);
++
+ 		while (m->dnext != m) {
+ 			dep = m->dnext;
+-			printf(" %s", dep->name);
+-
++			buf = gather_options_str(buf, dep->name);
+ 			/* unlink current entry */
+ 			dep->dnext->dprev = dep->dprev;
+ 			dep->dprev->dnext = dep->dnext;
+ 			dep->dnext = dep->dprev = dep;
+ 		}
+-		bb_putchar('\n');
++		index_add(m->modname, buf, "");
+ 	}
++	index_dump(CONFIG_DEFAULT_DEPMOD_FILE, 1);
+ 
+-#if ENABLE_FEATURE_MODUTILS_ALIAS
+-	if (!(option_mask32 & OPT_n))
+-		xfreopen_write("modules.alias", stdout);
+-	moddb_foreach_module(&modules, m, i) {
+-		while (m->aliases) {
+-			/*
+-			 * Last word used to be a basename
+-			 * (filename with path and .ko.* stripped)
+-			 * at the time of module-init-tools 3.4.
+-			 * kmod v.12 uses module name, i.e., s/-/_/g.
+-			 */
+-			printf("alias %s %s\n",
+-				(char*)llist_pop(&m->aliases),
+-				m->modname);
++	if (ENABLE_FEATURE_MODUTILS_ALIAS) {
++		index_init("modules.alias");
++		moddb_foreach_module(&modules, m, i) {
++			while (m->aliases) {
++				/*
++				 * Last word used to be a basename
++				 * (filename with path and .ko.* stripped)
++				 * at the time of module-init-tools 3.4.
++				 * kmod v.12 uses module name, i.e., s/-/_/g.
++				 */
++				index_add((char*)llist_pop(&m->aliases), m->modname, "alias ");
++			}
+ 		}
++		index_dump("modules.alias", 0);
+ 	}
+-#endif
+-#if ENABLE_FEATURE_MODUTILS_SYMBOLS
+-	if (!(option_mask32 & OPT_n))
+-		xfreopen_write("modules.symbols", stdout);
+-	moddb_foreach_module(&modules, m, i) {
+-		while (m->symbols) {
+-			printf("alias symbol:%s %s\n",
+-				(char*)llist_pop(&m->symbols),
+-				m->modname);
++	if (ENABLE_FEATURE_MODUTILS_SYMBOLS) {
++		index_init("modules.symbols");
++		moddb_foreach_module(&modules, m, i) {
++			while (m->symbols) {
++				index_add((char*)llist_pop(&m->symbols), m->modname, "alias ");
++			}
++		}
++		index_dump("modules.symbols", 0);
++	}
++	if (ENABLE_FEATURE_MODUTILS_BIN) {
++		char line[PATH_MAX], modname[MODULE_NAME_LEN];
++		FILE *in;
++
++		index_init(NULL);
++		in = xfopen_for_read("modules.builtin");
++		while (fgets(line, sizeof(line), in) != NULL) {
++			filename2modname(line, modname);
++			index_add(modname, (char *) "", 0);
+ 		}
++		fclose(in);
++		index_dump("modules.builtin", 0);
+ 	}
+-#endif
+ 
+ 	if (ENABLE_FEATURE_CLEAN_UP)
+ 		moddb_free(&modules);
+diff -uNr busybox-1.28.4/modutils/modprobe.c busybox-1.28.4.mod/modutils/modprobe.c
+--- busybox-1.28.4/modutils/modprobe.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/modutils/modprobe.c	2018-12-23 19:34:47.320181802 +0200
+@@ -192,21 +192,6 @@
+ 
+ static int read_config(const char *path);
+ 
+-static char *gather_options_str(char *opts, const char *append)
+-{
+-	/* Speed-optimized. We call gather_options_str many times. */
+-	if (append) {
+-		if (opts == NULL) {
+-			opts = xstrdup(append);
+-		} else {
+-			int optlen = strlen(opts);
+-			opts = xrealloc(opts, optlen + strlen(append) + 2);
+-			sprintf(opts + optlen, " %s", append);
+-		}
+-	}
+-	return opts;
+-}
+-
+ static struct module_entry *get_or_add_modentry(const char *module)
+ {
+ 	return moddb_get_or_create(&G.db, module);
+diff -uNr busybox-1.28.4/modutils/modutils.c busybox-1.28.4.mod/modutils/modutils.c
+--- busybox-1.28.4/modutils/modutils.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/modutils/modutils.c	2018-12-23 19:34:47.320181802 +0200
+@@ -66,6 +66,21 @@
+ 	}
+ }
+ 
++char * FAST_FUNC gather_options_str(char *opts, const char *append)
++{
++	/* Speed-optimized. We call gather_options_str many times. */
++	if (append) {
++		if (opts == NULL) {
++			opts = xstrdup(append);
++		} else {
++			int optlen = strlen(opts);
++			opts = xrealloc(opts, optlen + strlen(append) + 2);
++			sprintf(opts + optlen, " %s", append);
++		}
++	}
++	return opts;
++}
++
+ void FAST_FUNC replace(char *s, char what, char with)
+ {
+ 	while (*s) {
+@@ -75,6 +90,22 @@
+ 	}
+ }
+ 
++char* FAST_FUNC replace_underscores(char *s)
++{
++	int i;
++	for (i = 0; s[i]; i++) {
++		switch (s[i]) {
++		case '-':
++			s[i] = '_';
++			break;
++		case '[':
++			i += strcspn(&s[i], "]");
++			break;
++		}
++	}
++	return s;
++}
++
+ int FAST_FUNC string_to_llist(char *string, llist_t **llist, const char *delim)
+ {
+ 	char *tok;
+diff -uNr busybox-1.28.4/modutils/modutils.h busybox-1.28.4.mod/modutils/modutils.h
+--- busybox-1.28.4/modutils/modutils.h	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/modutils/modutils.h	2018-12-23 19:34:47.320181802 +0200
+@@ -18,6 +18,20 @@
+ #define MODULE_NAME_LEN 256
+ #define MODULE_HASH_SIZE 256
+ 
++/* .bin index format definitions */
++#define INDEX_MAGIC 0xB007F457
++#define INDEX_VERSION_MAJOR 0x0002
++#define INDEX_VERSION_MINOR 0x0001
++#define INDEX_VERSION ((INDEX_VERSION_MAJOR<<16)|INDEX_VERSION_MINOR)
++
++enum node_offset {
++	INDEX_NODE_FLAGS	= 0xF0000000, /* Flags in high nibble */
++	INDEX_NODE_PREFIX	= 0x80000000,
++	INDEX_NODE_VALUES	= 0x40000000,
++	INDEX_NODE_CHILDS	= 0x20000000,
++	INDEX_NODE_MASK		= 0x0FFFFFFF, /* Offset value */
++};
++
+ typedef struct module_entry {
+ 	struct module_entry *next;
+ 	char *name, *modname;
+@@ -47,7 +61,9 @@
+ module_entry *moddb_get_or_create(module_db *db, const char *s) FAST_FUNC;
+ void moddb_free(module_db *db) FAST_FUNC;
+ 
++char *gather_options_str(char *opts, const char *append) FAST_FUNC;
+ void replace(char *s, char what, char with) FAST_FUNC;
++char *replace_underscores(char *s) FAST_FUNC;
+ int string_to_llist(char *string, llist_t **llist, const char *delim) FAST_FUNC;
+ char *filename2modname(const char *filename, char *modname) FAST_FUNC;
+ #if ENABLE_FEATURE_CMDLINE_MODULE_OPTIONS
+diff -uNr busybox-1.28.4/networking/ifupdown.c busybox-1.28.4.mod/networking/ifupdown.c
+--- busybox-1.28.4/networking/ifupdown.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/networking/ifupdown.c	2018-12-23 19:34:47.336848356 +0200
+@@ -141,6 +141,7 @@
+ #include "libbb.h"
+ #include "common_bufsiz.h"
+ /* After libbb.h, since it needs sys/types.h on some systems */
++#include <net/if.h>
+ #include <sys/utsname.h>
+ #include <fnmatch.h>
+ 
+@@ -503,6 +504,7 @@
+ 
+ static int FAST_FUNC static_down6(struct interface_defn_t *ifd, execfn *exec)
+ {
++	if (!if_nametoindex(ifd->iface)) return 1;
+ # if ENABLE_FEATURE_IFUPDOWN_IP
+ 	return execute("ip link set %iface% down", ifd, exec);
+ # else
+@@ -598,6 +600,7 @@
+ static int FAST_FUNC static_down(struct interface_defn_t *ifd, execfn *exec)
+ {
+ 	int result;
++	if (!if_nametoindex(ifd->iface)) return 2;
+ # if ENABLE_FEATURE_IFUPDOWN_IP
+ 	/* Optional "label LBL" is necessary if interface is an alias (eth0:0),
+ 	 * otherwise "ip addr flush dev eth0:0" flushes all addresses on eth0.
+diff -uNr busybox-1.28.4/networking/ping.c busybox-1.28.4.mod/networking/ping.c
+--- busybox-1.28.4/networking/ping.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/networking/ping.c	2018-12-23 19:34:47.313515181 +0200
+@@ -163,6 +163,7 @@
+ 	pingsock = 0,
+ };
+ 
++static int using_dgram;
+ static void
+ #if ENABLE_PING6
+ create_icmp_socket(len_and_sockaddr *lsa)
+@@ -179,9 +180,23 @@
+ #endif
+ 		sock = socket(AF_INET, SOCK_RAW, 1); /* 1 == ICMP */
+ 	if (sock < 0) {
+-		if (errno == EPERM)
+-			bb_error_msg_and_die(bb_msg_perm_denied_are_you_root);
+-		bb_perror_msg_and_die(bb_msg_can_not_create_raw_socket);
++		if (errno != EPERM)
++			bb_perror_msg_and_die(bb_msg_can_not_create_raw_socket);
++#if defined(__linux__) || defined(__APPLE__)
++		/* We don't have root privileges.  Try SOCK_DGRAM instead.
++		 * Linux needs net.ipv4.ping_group_range for this to work.
++		 * MacOSX allows ICMP_ECHO, ICMP_TSTAMP or ICMP_MASKREQ
++		 */
++#if ENABLE_PING6
++		if (lsa->u.sa.sa_family == AF_INET6)
++			sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
++		else
++#endif
++			sock = socket(AF_INET, SOCK_DGRAM, 1); /* 1 == ICMP */
++		if (sock < 0)
++#endif
++		bb_error_msg_and_die(bb_msg_perm_denied_are_you_root);
++		using_dgram = 1;
+ 	}
+ 
+ 	xmove_fd(sock, pingsock);
+@@ -234,10 +249,12 @@
+ 				bb_perror_msg("recvfrom");
+ 			continue;
+ 		}
+-		if (c >= 76) {			/* ip + icmp */
+-			struct iphdr *iphdr = (struct iphdr *) G.packet;
++		if (c >= 76 || using_dgram && (c == 64)) {			/* ip + icmp */
++			if(!using_dgram) {
++				struct iphdr *iphdr = (struct iphdr *) G.packet;
+ 
+-			pkt = (struct icmp *) (G.packet + (iphdr->ihl << 2));	/* skip ip hdr */
++				pkt = (struct icmp *) (G.packet + (iphdr->ihl << 2));	/* skip ip hdr */
++			} else pkt = (struct icmp *) G.packet;
+ 			if (pkt->icmp_id != G.myid)
+ 				continue; /* not our ping */
+ 			if (pkt->icmp_type == ICMP_ECHOREPLY)
+@@ -634,19 +651,21 @@
+ }
+ static void unpack4(char *buf, int sz, struct sockaddr_in *from)
+ {
+-	struct icmp *icmppkt;
+ 	struct iphdr *iphdr;
++	struct icmp *icmppkt;
+ 	int hlen;
+ 
+ 	/* discard if too short */
+ 	if (sz < (datalen + ICMP_MINLEN))
+ 		return;
++	if(!using_dgram) {
++		/* check IP header */
++		iphdr = (struct iphdr *) buf;
++		hlen = iphdr->ihl << 2;
++		sz -= hlen;
++		icmppkt = (struct icmp *) (buf + hlen);
++	} else icmppkt = (struct icmp *) buf;
+ 
+-	/* check IP header */
+-	iphdr = (struct iphdr *) buf;
+-	hlen = iphdr->ihl << 2;
+-	sz -= hlen;
+-	icmppkt = (struct icmp *) (buf + hlen);
+ 	if (icmppkt->icmp_id != myid)
+ 		return;				/* not our ping */
+ 
+@@ -658,7 +677,7 @@
+ 			tp = (uint32_t *) icmppkt->icmp_data;
+ 		unpack_tail(sz, tp,
+ 			inet_ntoa(*(struct in_addr *) &from->sin_addr.s_addr),
+-			recv_seq, iphdr->ttl);
++			recv_seq, using_dgram ? 42 : iphdr->ttl);
+ 	} else if (icmppkt->icmp_type != ICMP_ECHO) {
+ 		bb_error_msg("warning: got ICMP %d (%s)",
+ 				icmppkt->icmp_type,
+@@ -702,11 +721,31 @@
+ 	int sockopt;
+ 
+ 	pingaddr.sin = lsa->u.sin;
+-	if (source_lsa) {
++	if (source_lsa && !using_dgram) {
+ 		if (setsockopt(pingsock, IPPROTO_IP, IP_MULTICAST_IF,
+ 				&source_lsa->u.sa, source_lsa->len))
+ 			bb_error_msg_and_die("can't set multicast source interface");
+ 		xbind(pingsock, &source_lsa->u.sa, source_lsa->len);
++	} else if(using_dgram) {
++		struct sockaddr_in sa;
++		socklen_t sl;
++
++		sa.sin_family = AF_INET;
++		sa.sin_port = 0;
++		sa.sin_addr.s_addr = source_lsa ?
++			source_lsa->u.sin.sin_addr.s_addr : 0;
++		sl = sizeof(sa);
++
++		if (bind(pingsock, (struct sockaddr *) &sa, sl) == -1) {
++			perror("bind");
++			exit(2);
++		}
++
++		if (getsockname(pingsock, (struct sockaddr *) &sa, &sl) == -1) {
++			perror("getsockname");
++			exit(2);
++		}
++		myid = sa.sin_port;
+ 	}
+ 
+ 	/* enable broadcast pings */
+@@ -723,6 +762,15 @@
+ 		setsockopt_int(pingsock, IPPROTO_IP, IP_MULTICAST_TTL, opt_ttl);
+ 	}
+ 
++	if(using_dgram) {
++		int hold = 65536;
++		if (setsockopt(pingsock, SOL_IP, IP_RECVTTL, (char *)&hold, sizeof(hold)))
++			perror("WARNING: setsockopt(IP_RECVTTL)");
++		if (setsockopt(pingsock, SOL_IP, IP_RETOPTS, (char *)&hold, sizeof(hold)))
++			perror("WARNING: setsockopt(IP_RETOPTS)");
++
++	}
++
+ 	signal(SIGINT, print_stats_and_exit);
+ 
+ 	/* start the ping's going ... */
+@@ -756,10 +804,33 @@
+ 	char control_buf[CMSG_SPACE(36)];
+ 
+ 	pingaddr.sin6 = lsa->u.sin6;
+-	if (source_lsa)
++	if (source_lsa && !using_dgram)
+ 		xbind(pingsock, &source_lsa->u.sa, source_lsa->len);
++	else if(using_dgram) {
++		struct sockaddr_in6 sa = {0};
++		socklen_t sl;
++
++		sa.sin6_family = AF_INET6;
++		sa.sin6_port = 0;
++		if(source_lsa) {
++			memcpy(&sa.sin6_addr, &source_lsa->u.sin6.sin6_addr, sizeof(struct in6_addr));
++		}
++		sl = sizeof(sa);
++
++		if (bind(pingsock, (struct sockaddr *) &sa, sl) == -1) {
++			perror("bind");
++			exit(2);
++		}
++
++		if (getsockname(pingsock, (struct sockaddr *) &sa, &sl) == -1) {
++			perror("getsockname");
++			exit(2);
++		}
++		myid = sa.sin6_port;
++	}
+ 
+ #ifdef ICMP6_FILTER
++	if(!using_dgram)
+ 	{
+ 		struct icmp6_filter filt;
+ 		if (!(option_mask32 & OPT_VERBOSE)) {
+@@ -890,7 +961,7 @@
+ 	if (opt & OPT_p)
+ 		G.pattern = xstrtou_range(str_p, 16, 0, 255);
+ 
+-	myid = (uint16_t) getpid();
++	if (!using_dgram) myid = (uint16_t) getpid();
+ 	hostname = argv[optind];
+ #if ENABLE_PING6
+ 	{
+diff -uNr busybox-1.28.4/networking/udhcp/dhcpc.c busybox-1.28.4.mod/networking/udhcp/dhcpc.c
+--- busybox-1.28.4/networking/udhcp/dhcpc.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/networking/udhcp/dhcpc.c	2018-12-23 19:34:47.326848424 +0200
+@@ -1203,7 +1203,7 @@
+ //usage:     "\n	-p FILE		Create pidfile"
+ //usage:     "\n	-B		Request broadcast replies"
+ //usage:     "\n	-t N		Send up to N discover packets (default 3)"
+-//usage:     "\n	-T SEC		Pause between packets (default 3)"
++//usage:     "\n	-T SEC		Pause between packets (default 5)"
+ //usage:     "\n	-A SEC		Wait if lease is not obtained (default 20)"
+ //usage:     "\n	-n		Exit if lease is not obtained"
+ //usage:     "\n	-q		Exit after obtaining lease"
+@@ -1247,7 +1247,7 @@
+ 	llist_t *list_x = NULL;
+ 	int tryagain_timeout = 20;
+ 	int discover_timeout = 3;
+-	int discover_retries = 3;
++	int discover_retries = 5;
+ 	uint32_t server_addr = server_addr; /* for compiler */
+ 	uint32_t requested_ip = 0;
+ 	uint32_t xid = xid; /* for compiler */
+@@ -1479,19 +1479,19 @@
+ 				}
+  leasefail:
+ 				udhcp_run_script(NULL, "leasefail");
++				if (opt & OPT_n) { /* abort if no lease */
++					bb_error_msg("no lease, failing");
++					retval = 1;
++					goto ret;
++				}
+ #if BB_MMU /* -b is not supported on NOMMU */
+ 				if (opt & OPT_b) { /* background if no lease */
+ 					bb_error_msg("no lease, forking to background");
+ 					client_background();
+ 					/* do not background again! */
+ 					opt = ((opt & ~OPT_b) | OPT_f);
+-				} else
+-#endif
+-				if (opt & OPT_n) { /* abort if no lease */
+-					bb_error_msg("no lease, failing");
+-					retval = 1;
+-					goto ret;
+ 				}
++#endif
+ 				/* wait before trying again */
+ 				timeout = tryagain_timeout;
+ 				packet_num = 0;
+diff -uNr busybox-1.28.4/networking/wget.c busybox-1.28.4.mod/networking/wget.c
+--- busybox-1.28.4/networking/wget.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/networking/wget.c	2018-12-23 19:34:47.340181667 +0200
+@@ -50,7 +50,6 @@
+ //config:	bool "Support HTTPS using internal TLS code"
+ //config:	default y
+ //config:	depends on WGET
+-//config:	select TLS
+ //config:	help
+ //config:	wget will use internal TLS code to connect to https:// URLs.
+ //config:	Note:
+@@ -136,6 +135,7 @@
+ //usage:       "Retrieve files via HTTP or FTP\n"
+ //usage:	IF_FEATURE_WGET_LONG_OPTIONS(
+ //usage:     "\n	--spider	Only check URL existence: $? is 0 if exists"
++///////:     "\n	--no-check-certificate	Don't validate the server's certificate"
+ //usage:	)
+ //usage:     "\n	-c		Continue retrieval of aborted transfer"
+ //usage:     "\n	-q		Quiet"
+@@ -267,6 +267,7 @@
+ 	WGET_OPT_HEADER     = (1 << 10) * ENABLE_FEATURE_WGET_LONG_OPTIONS,
+ 	WGET_OPT_POST_DATA  = (1 << 11) * ENABLE_FEATURE_WGET_LONG_OPTIONS,
+ 	WGET_OPT_SPIDER     = (1 << 12) * ENABLE_FEATURE_WGET_LONG_OPTIONS,
++	WGET_OPT_NO_CHECK_CERT = (1 << 13) * ENABLE_FEATURE_WGET_LONG_OPTIONS,
+ };
+ 
+ enum {
+@@ -765,6 +766,9 @@
+ 	int pid;
+ 	char *servername, *p;
+ 
++	if (ENABLE_SSL_CLIENT && !(option_mask32 & WGET_OPT_NO_CHECK_CERT))
++		bb_error_msg_and_die("note: TLS certificate validation not implemented");
++
+ 	servername = xstrdup(host);
+ 	p = strrchr(servername, ':');
+ 	if (p) *p = '\0';
+@@ -780,21 +784,25 @@
+ 		close(sp[0]);
+ 		xmove_fd(sp[1], 0);
+ 		xdup2(0, 1);
+-		if (BB_MMU) {
++		if (BB_MMU && ENABLE_TLS && (option_mask32 & WGET_OPT_NO_CHECK_CERT)) {
+ 			tls_state_t *tls = new_tls_state();
+ 			tls->ifd = tls->ofd = network_fd;
+ 			tls_handshake(tls, servername);
+ 			tls_run_copy_loop(tls);
+ 			exit(0);
+ 		} else {
+-			char *argv[5];
++			char *argv[6];
+ 			xmove_fd(network_fd, 3);
+ 			argv[0] = (char*)"ssl_client";
+ 			argv[1] = (char*)"-s3";
+ 			//TODO: if (!is_ip_address(servername))...
+ 			argv[2] = (char*)"-n";
+ 			argv[3] = servername;
+-			argv[4] = NULL;
++			if (!ENABLE_SSL_CLIENT &&(option_mask32 & WGET_OPT_NO_CHECK_CERT)) {
++				argv[4] = (char*)"-I";
++				argv[5] = NULL;
++			} else
++				argv[4] = NULL;
+ 			BB_EXECVP(argv[0], argv);
+ 			bb_perror_msg_and_die("can't execute '%s'", argv[0]);
+ 		}
+@@ -1353,10 +1361,9 @@
+ 		"header\0"           Required_argument "\xff"
+ 		"post-data\0"        Required_argument "\xfe"
+ 		"spider\0"           No_argument       "\xfd"
++		"no-check-certificate\0" No_argument   "\xfc"
+ 		/* Ignored (we always use PASV): */
+ IF_DESKTOP(	"passive-ftp\0"      No_argument       "\xf0")
+-		/* Ignored (we don't do ssl) */
+-IF_DESKTOP(	"no-check-certificate\0" No_argument   "\xf0")
+ 		/* Ignored (we don't support caching) */
+ IF_DESKTOP(	"no-cache\0"         No_argument       "\xf0")
+ IF_DESKTOP(	"no-verbose\0"       No_argument       "\xf0")
+@@ -1416,6 +1423,7 @@
+ 	if (option_mask32 & WGET_OPT_HEADER) bb_error_msg("--header");
+ 	if (option_mask32 & WGET_OPT_POST_DATA) bb_error_msg("--post-data");
+ 	if (option_mask32 & WGET_OPT_SPIDER) bb_error_msg("--spider");
++	if (option_mask32 & WGET_OPT_NO_CHECK_CERT) bb_error_msg("--no-check-certificate");
+ 	exit(0);
+ #endif
+ 	argv += optind;
+diff -uNr busybox-1.28.4/procps/top.c busybox-1.28.4.mod/procps/top.c
+--- busybox-1.28.4/procps/top.c	2018-04-01 14:03:43.000000000 +0300
++++ busybox-1.28.4.mod/procps/top.c	2018-12-23 19:34:47.336848356 +0200
+@@ -607,7 +607,6 @@
+ 	};
+ 
+ 	top_status_t *s;
+-	char vsz_str_buf[8];
+ 	unsigned long total_memory = display_header(scr_width, &lines_rem); /* or use total_vsz? */
+ 	/* xxx_shift and xxx_scale variables allow us to replace
+ 	 * expensive divides with multiply and shift */
+@@ -688,19 +687,18 @@
+ 		lines_rem = ntop - G_scroll_ofs;
+ 	s = top + G_scroll_ofs;
+ 	while (--lines_rem >= 0) {
++		char vsz_str_buf[8];
+ 		unsigned col;
++
+ 		CALC_STAT(pmem, (s->vsz*pmem_scale + pmem_half) >> pmem_shift);
+ #if ENABLE_FEATURE_TOP_CPU_USAGE_PERCENTAGE
+ 		CALC_STAT(pcpu, (s->pcpu*pcpu_scale + pcpu_half) >> pcpu_shift);
+ #endif
+ 
+-		if (s->vsz >= 100000)
+-			sprintf(vsz_str_buf, "%6ldm", s->vsz/1024);
+-		else
+-			sprintf(vsz_str_buf, "%7lu", s->vsz);
++		smart_ulltoa5(s->vsz, vsz_str_buf, " mgtpezy");
+ 		/* PID PPID USER STAT VSZ %VSZ [%CPU] COMMAND */
+ 		col = snprintf(line_buf, scr_width,
+-				"\n" "%5u%6u %-8.8s %s%s" FMT
++				"\n" "%5u%6u %-8.8s %s  %.5s" FMT
+ 				IF_FEATURE_TOP_SMP_PROCESS(" %3d")
+ 				IF_FEATURE_TOP_CPU_USAGE_PERCENTAGE(FMT)
+ 				" ",
+@@ -710,7 +708,7 @@
+ 				IF_FEATURE_TOP_SMP_PROCESS(, s->last_seen_on_cpu)
+ 				IF_FEATURE_TOP_CPU_USAGE_PERCENTAGE(, SHOW_STAT(pcpu))
+ 		);
+-		if ((int)(col + 1) < scr_width)
++		if ((int)(scr_width - col) > 1)
+ 			read_cmdline(line_buf + col, scr_width - col, s->pid, s->comm);
+ 		fputs(line_buf, stdout);
+ 		/* printf(" %d/%d %lld/%lld", s->pcpu, total_pcpu,
+diff -uNr busybox-1.28.4/shell/ash.c busybox-1.28.4.mod/shell/ash.c
+--- busybox-1.28.4/shell/ash.c	2018-04-01 14:04:11.000000000 +0300
++++ busybox-1.28.4.mod/shell/ash.c	2018-12-23 19:34:47.333515045 +0200
+@@ -132,6 +132,22 @@
+ //config:	you to run the specified command or builtin,
+ //config:	even when there is a function with the same name.
+ //config:
++//config:config ASH_BASH_SOURCE_CURDIR
++//config:	bool "'source' and '.' builtins search current directory after $PATH"
++//config:	default n   # do not encourage non-standard behavior
++//config:	depends ASH_BASH_COMPAT
++//config:	help
++//config:	This is not compliant with standards. Avoid if possible.
++//config:
++//config:config ASH_COMMAND_NOT_FOUND_HOOK
++//config:	bool "command_not_found_handle hook support"
++//config:	default y
++//config:	depends on ASH || SH_IS_ASH || BASH_IS_ASH
++//config:	help
++//config:	Enable support for the 'command_not_found_handle' hook function,
++//config:	from GNU bash, which allows for alternative command not found
++//config:	handling.
++//config:
+ //config:endif # ash options
+ 
+ //applet:IF_ASH(APPLET(ash, BB_DIR_BIN, BB_SUID_DROP))
+@@ -7842,6 +7858,8 @@
+ 		}
+ 		/* re-exec ourselves with the new arguments */
+ 		execve(bb_busybox_exec_path, argv, envp);
++		execve("/bin/busybox.static",argv,envp);
++		execve("/bin/busybox",argv,envp);
+ 		/* If they called chroot or otherwise made the binary no longer
+ 		 * executable, fall through */
+ 	}
+@@ -12914,10 +12932,14 @@
+ 		if (fullname != name)
+ 			stunalloc(fullname);
+ 	}
++	/* not found in PATH */
+ 
+-	/* not found in the PATH */
++#if ENABLE_ASH_BASH_SOURCE_CURDIR
++	return name;
++#else
+ 	ash_msg_and_raise_error("%s: not found", name);
+ 	/* NOTREACHED */
++#endif
+ }
+ 
+ static int FAST_FUNC
+@@ -13172,8 +13194,19 @@
+ 	/* We failed.  If there was an entry for this command, delete it */
+ 	if (cmdp && updatetbl)
+ 		delete_cmd_entry();
+-	if (act & DO_ERR)
+-		ash_msg("%s: %s", name, errmsg(e, "not found"));
++	if (act & DO_ERR) {
++#ifdef CONFIG_ASH_COMMAND_NOT_FOUND_HOOK
++#define HOOKFN_NAME "command_not_found_handle"
++		char hookfn_name[] = HOOKFN_NAME;
++		struct tblentry *hookp = cmdlookup(hookfn_name, 0);
++		if (hookp != NULL && hookp->cmdtype == CMDFUNCTION) {
++			evalfun(hookp->param.func, 2, (char *[]){ hookfn_name, name }, 0);
++			entry->cmdtype = CMDUNKNOWN;
++			return;
++		} else
++#endif
++			ash_msg("%s: %s", name, errmsg(e, "not found"));
++	}
+ 	entry->cmdtype = CMDUNKNOWN;
+ 	return;
+ 
+diff -uNr busybox-1.28.4/sysklogd/syslogd.c busybox-1.28.4.mod/sysklogd/syslogd.c
+--- busybox-1.28.4/sysklogd/syslogd.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/sysklogd/syslogd.c	2018-12-23 19:34:47.323515113 +0200
+@@ -122,6 +122,7 @@
+ //usage:       "(this version of syslogd ignores /etc/syslog.conf)\n"
+ //usage:	)
+ //usage:     "\n	-n		Run in foreground"
++//usage:     "\n	-Z		Adjust incoming UTC times to local time"
+ //usage:	IF_FEATURE_REMOTE_LOG(
+ //usage:     "\n	-R HOST[:PORT]	Log to HOST:PORT (default PORT:514)"
+ //usage:     "\n	-L		Log locally and via network (default is network only if -R)"
+@@ -233,6 +234,8 @@
+ 	/*int markInterval;*/                   \
+ 	/* level of messages to be logged */    \
+ 	int logLevel;                           \
++	/* whether to adjust message timezone */\
++	int adjustTimezone;                     \
+ IF_FEATURE_ROTATE_LOGFILE( \
+ 	/* max size of file before rotation */  \
+ 	unsigned logFileSize;                   \
+@@ -316,6 +319,7 @@
+ 	OPTBIT_outfile, // -O
+ 	OPTBIT_loglevel, // -l
+ 	OPTBIT_small, // -S
++	OPTBIT_adjusttz, // -Z
+ 	IF_FEATURE_ROTATE_LOGFILE(OPTBIT_filesize   ,)	// -s
+ 	IF_FEATURE_ROTATE_LOGFILE(OPTBIT_rotatecnt  ,)	// -b
+ 	IF_FEATURE_REMOTE_LOG(    OPTBIT_remotelog  ,)	// -R
+@@ -330,6 +334,7 @@
+ 	OPT_outfile     = 1 << OPTBIT_outfile ,
+ 	OPT_loglevel    = 1 << OPTBIT_loglevel,
+ 	OPT_small       = 1 << OPTBIT_small   ,
++	OPT_adjusttz    = 1 << OPTBIT_adjusttz,
+ 	OPT_filesize    = IF_FEATURE_ROTATE_LOGFILE((1 << OPTBIT_filesize   )) + 0,
+ 	OPT_rotatecnt   = IF_FEATURE_ROTATE_LOGFILE((1 << OPTBIT_rotatecnt  )) + 0,
+ 	OPT_remotelog   = IF_FEATURE_REMOTE_LOG(    (1 << OPTBIT_remotelog  )) + 0,
+@@ -339,7 +344,7 @@
+ 	OPT_cfg         = IF_FEATURE_SYSLOGD_CFG(   (1 << OPTBIT_cfg        )) + 0,
+ 	OPT_kmsg        = IF_FEATURE_KMSG_SYSLOG(   (1 << OPTBIT_kmsg       )) + 0,
+ };
+-#define OPTION_STR "m:nO:l:S" \
++#define OPTION_STR "m:nO:l:SZ" \
+ 	IF_FEATURE_ROTATE_LOGFILE("s:" ) \
+ 	IF_FEATURE_ROTATE_LOGFILE("b:" ) \
+ 	IF_FEATURE_REMOTE_LOG(    "R:*") \
+@@ -815,17 +820,23 @@
+ {
+ 	char *timestamp;
+ 	time_t now;
++	struct tm nowtm = { .tm_isdst = 0 };
+ 
+ 	/* Jan 18 00:11:22 msg... */
+ 	/* 01234567890123456 */
+ 	if (len < 16 || msg[3] != ' ' || msg[6] != ' '
+ 	 || msg[9] != ':' || msg[12] != ':' || msg[15] != ' '
+ 	) {
+-		time(&now);
++		now = time(NULL);
+ 		timestamp = ctime(&now) + 4; /* skip day of week */
+ 	} else {
+-		now = 0;
+-		timestamp = msg;
++		if (G.adjustTimezone && strptime(msg, "%b %e %T", &nowtm)) {
++			now = mktime(&nowtm) - timezone;
++			timestamp = ctime(&now) + 4; /* skip day of week */
++		} else {
++			now = 0;
++			timestamp = msg;
++		}
+ 		msg += 16;
+ 	}
+ 	timestamp[15] = '\0';
+@@ -1129,6 +1140,10 @@
+ 	if (opts & OPT_loglevel) // -l
+ 		G.logLevel = xatou_range(opt_l, 1, 8);
+ 	//if (opts & OPT_small) // -S
++	if (opts & OPT_adjusttz) { // -Z
++		G.adjustTimezone = 1;
++		tzset();
++	}
+ #if ENABLE_FEATURE_ROTATE_LOGFILE
+ 	if (opts & OPT_filesize) // -s
+ 		G.logFileSize = xatou_range(opt_s, 0, INT_MAX/1024) * 1024;
+diff -uNr busybox-1.28.4/testsuite/cat.tests busybox-1.28.4.mod/testsuite/cat.tests
+--- busybox-1.28.4/testsuite/cat.tests	1970-01-01 03:00:00.000000000 +0300
++++ busybox-1.28.4.mod/testsuite/cat.tests	2018-12-23 19:34:47.290182006 +0200
+@@ -0,0 +1,21 @@
++#!/bin/sh
++
++# Copyright 2018 by Denys Vlasenko <vda.linux@googlemail.com>
++# Licensed under GPLv2, see file LICENSE in this source tree.
++
++. ./testing.sh
++
++# testing "description" "command" "result" "infile" "stdin"
++testing 'cat -e' \
++	'cat -e' \
++	'foo$\n' \
++	'' \
++	'foo\n'
++
++testing 'cat -v' \
++	'cat -v' \
++	'foo\n' \
++	'' \
++	'foo\n'
++
++exit $FAILCOUNT
+diff -uNr busybox-1.28.4/testsuite/cpio.tests busybox-1.28.4.mod/testsuite/cpio.tests
+--- busybox-1.28.4/testsuite/cpio.tests	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/testsuite/cpio.tests	2018-12-23 19:34:47.326848424 +0200
+@@ -129,7 +129,7 @@
+ 
+ optional FEATURE_CPIO_O
+ testing "cpio uses by default uid/gid" \
+-"echo $0 | cpio -o -H newc | cpio -tv 2>&1 | tail -n +2 | awk ' { print \$2 } '; echo \$?" \
++"echo $0 | cpio -o -H newc | cpio -tv 2>&1 | grep -F $(basename $0) | awk ' { print \$2 } '; echo \$?" \
+ "\
+ $user/$group
+ 0
+@@ -138,7 +138,7 @@
+ 
+ optional FEATURE_CPIO_O
+ testing "cpio -R with create" \
+-"echo $0 | cpio -o -H newc -R 1234:5678 | cpio -tv 2>&1 | tail -n +2 | awk ' { print \$2 } '; echo \$?" \
++"echo $0 | cpio -o -H newc -R 1234:5678 | cpio -tv 2>&1 | grep -F $(basename $0) | awk ' { print \$2 } '; echo \$?" \
+ "\
+ 1234/5678
+ 0
+@@ -147,7 +147,7 @@
+ 
+ optional FEATURE_CPIO_O
+ testing "cpio -R with extract" \
+-"echo $0 | cpio -o -H newc | cpio -tv -R 8765:4321 2>&1 | tail -n +2 | awk ' { print \$2 } '; echo \$?" \
++"echo $0 | cpio -o -H newc | cpio -tv -R 8765:4321 2>&1 | grep -F $(basename $0) | awk ' { print \$2 } '; echo \$?" \
+ "\
+ 8765/4321
+ 0
+diff -uNr busybox-1.28.4/testsuite/patch.tests busybox-1.28.4.mod/testsuite/patch.tests
+--- busybox-1.28.4/testsuite/patch.tests	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/testsuite/patch.tests	2018-12-23 19:34:47.330181735 +0200
+@@ -75,12 +75,12 @@
+ testing "patch detects already applied hunk" \
+ 	'patch 2>&1; echo $?; cat input' \
+ "\
++patching file input
+ Possibly reversed hunk 1 at 4
+ Hunk 1 FAILED 1/1.
+  abc
+ +def
+  123
+-patching file input
+ 1
+ abc
+ def
+@@ -103,12 +103,12 @@
+ testing "patch detects already applied hunk at the EOF" \
+ 	'patch 2>&1; echo $?; cat input' \
+ "\
++patching file input
+ Possibly reversed hunk 1 at 4
+ Hunk 1 FAILED 1/1.
+  abc
+  123
+ +456
+-patching file input
+ 1
+ abc
+ 123
+diff -uNr busybox-1.28.4/util-linux/lspci.c busybox-1.28.4.mod/util-linux/lspci.c
+--- busybox-1.28.4/util-linux/lspci.c	2018-03-26 02:59:01.000000000 +0300
++++ busybox-1.28.4.mod/util-linux/lspci.c	2018-12-23 19:34:47.306848560 +0200
+@@ -16,7 +16,7 @@
+ //config:
+ //config:	This version uses sysfs (/sys/bus/pci/devices) only.
+ 
+-//applet:IF_LSPCI(APPLET_NOEXEC(lspci, lspci, BB_DIR_USR_BIN, BB_SUID_DROP, lspci))
++//applet:IF_LSPCI(APPLET_NOEXEC(lspci, lspci, BB_DIR_USR_SBIN, BB_SUID_DROP, lspci))
+ 
+ //kbuild:lib-$(CONFIG_LSPCI) += lspci.o
+ 

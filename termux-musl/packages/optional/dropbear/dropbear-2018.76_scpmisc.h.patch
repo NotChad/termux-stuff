@@ -1,0 +1,12 @@
+diff -uNr dropbear-2018.76/scpmisc.h dropbear-2018.76.mod/scpmisc.h
+--- dropbear-2018.76/scpmisc.h	2018-02-27 16:25:12.000000000 +0200
++++ dropbear-2018.76.mod/scpmisc.h	2018-12-21 23:17:35.616715792 +0200
+@@ -22,8 +22,6 @@
+ char	*colon(char *);
+ long	 convtime(const char *);
+ 
+-struct passwd *pwcopy(struct passwd *);
+-
+ typedef struct arglist arglist;
+ struct arglist {
+ 	char    **list;

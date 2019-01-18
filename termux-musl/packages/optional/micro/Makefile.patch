@@ -1,0 +1,18 @@
+diff -uNr micro/Makefile micro.mod/Makefile
+--- micro/Makefile	2018-07-03 03:00:07.000000000 +0300
++++ micro.mod/Makefile	2018-12-24 14:12:32.355541421 +0200
+@@ -1,11 +1,11 @@
+ .PHONY: runtime
+ 
+-VERSION := $(shell GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) \
++VERSION := $(shell GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) CC= \
+ 	go run tools/build-version.go)
+ HASH := $(shell git rev-parse --short HEAD)
+-DATE := $(shell GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) \
++DATE := $(shell GOOS=$(shell go env GOHOSTOS) GOARCH=$(shell go env GOHOSTARCH) CC= \
+ 	go run tools/build-date.go)
+-ADDITIONAL_GO_LINKER_FLAGS := $(shell GOOS=$(shell go env GOHOSTOS) \
++ADDITIONAL_GO_LINKER_FLAGS := $(shell GOOS=$(shell go env GOHOSTOS) CC= \
+ 	GOARCH=$(shell go env GOHOSTARCH) \
+ 	go run tools/info-plist.go "$(VERSION)")
+ GOBIN ?= $(shell go env GOPATH)/bin

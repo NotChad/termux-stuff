@@ -1,0 +1,12 @@
+diff -uNr dpkg-1.19.2/lib/dpkg/dbmodify.c dpkg-1.19.2.mod/lib/dpkg/dbmodify.c
+--- dpkg-1.19.2/lib/dpkg/dbmodify.c	2018-10-08 01:07:51.000000000 +0300
++++ dpkg-1.19.2.mod/lib/dpkg/dbmodify.c	2018-12-17 18:34:26.936633046 +0200
+@@ -276,8 +276,6 @@
+   switch (readwritereq) {
+   case msdbrw_needsuperuser:
+   case msdbrw_needsuperuserlockonly:
+-    if (getuid() || geteuid())
+-      ohshit(_("requested operation requires superuser privilege"));
+     /* Fall through. */
+   case msdbrw_write: case msdbrw_writeifposs:
+     if (access(dpkg_db_get_dir(), W_OK)) {

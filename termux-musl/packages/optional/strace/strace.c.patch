@@ -1,0 +1,51 @@
+diff -uNr strace-4.25/strace.c strace-4.25.mod/strace.c
+--- strace-4.25/strace.c	2018-09-03 15:05:48.000000000 +0300
++++ strace-4.25.mod/strace.c	2018-12-20 16:37:52.550736600 +0200
+@@ -448,11 +448,7 @@
+ static void
+ swap_uid(void)
+ {
+-	int euid = geteuid(), uid = getuid();
+-
+-	if (euid != uid && setreuid(euid, uid) < 0) {
+-		perror_msg_and_die("setreuid");
+-	}
++    return;
+ }
+ 
+ static FILE *
+@@ -472,7 +468,7 @@
+ static int popen_pid;
+ 
+ #ifndef _PATH_BSHELL
+-# define _PATH_BSHELL "/bin/sh"
++# define _PATH_BSHELL "@TERMUX_PREFIX@/bin/sh"
+ #endif
+ 
+ /*
+@@ -1188,25 +1184,6 @@
+ 		}
+ 	}
+ 
+-	if (username != NULL) {
+-		/*
+-		 * It is important to set groups before we
+-		 * lose privileges on setuid.
+-		 */
+-		if (initgroups(username, run_gid) < 0) {
+-			perror_msg_and_die("initgroups");
+-		}
+-		if (setregid(run_gid, params->run_egid) < 0) {
+-			perror_msg_and_die("setregid");
+-		}
+-		if (setreuid(run_uid, params->run_euid) < 0) {
+-			perror_msg_and_die("setreuid");
+-		}
+-	} else if (geteuid() != 0)
+-		if (setreuid(run_uid, run_uid) < 0) {
+-			perror_msg_and_die("setreuid");
+-		}
+-
+ 	if (!daemonized_tracer) {
+ 		/*
+ 		 * Induce a ptrace stop. Tracer (our parent)

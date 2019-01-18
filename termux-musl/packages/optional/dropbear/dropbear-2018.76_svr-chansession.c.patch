@@ -1,0 +1,74 @@
+diff -uNr dropbear-2018.76/svr-chansession.c dropbear-2018.76.mod/svr-chansession.c
+--- dropbear-2018.76/svr-chansession.c	2018-02-27 16:25:12.000000000 +0200
++++ dropbear-2018.76.mod/svr-chansession.c	2018-12-21 23:16:24.869712170 +0200
+@@ -563,7 +563,6 @@
+ 
+ 	unsigned int termlen;
+ 	char namebuf[65];
+-	struct passwd * pw = NULL;
+ 
+ 	TRACE(("enter sessionpty"))
+ 
+@@ -593,11 +592,6 @@
+ 		dropbear_exit("Out of memory"); /* TODO disconnect */
+ 	}
+ 
+-	pw = getpwnam(ses.authstate.pw_name);
+-	if (!pw)
+-		dropbear_exit("getpwnam failed after succeeding previously");
+-	pty_setowner(pw, chansess->tty);
+-
+ 	/* Set up the rows/col counts */
+ 	sessionwinchange(chansess);
+ 
+@@ -918,50 +912,6 @@
+ 	seedrandom();
+ #endif
+ 
+-	/* clear environment */
+-	/* if we're debugging using valgrind etc, we need to keep the LD_PRELOAD
+-	 * etc. This is hazardous, so should only be used for debugging. */
+-#ifndef DEBUG_VALGRIND
+-#ifdef HAVE_CLEARENV
+-	clearenv();
+-#else /* don't HAVE_CLEARENV */
+-	/* Yay for posix. */
+-	if (environ) {
+-		environ[0] = NULL;
+-	}
+-#endif /* HAVE_CLEARENV */
+-#endif /* DEBUG_VALGRIND */
+-
+-	/* We can only change uid/gid as root ... */
+-	if (getuid() == 0) {
+-
+-		if ((setgid(ses.authstate.pw_gid) < 0) ||
+-			(initgroups(ses.authstate.pw_name, 
+-						ses.authstate.pw_gid) < 0)) {
+-			dropbear_exit("Error changing user group");
+-		}
+-		if (setuid(ses.authstate.pw_uid) < 0) {
+-			dropbear_exit("Error changing user");
+-		}
+-	} else {
+-		/* ... but if the daemon is the same uid as the requested uid, we don't
+-		 * need to */
+-
+-		/* XXX - there is a minor issue here, in that if there are multiple
+-		 * usernames with the same uid, but differing groups, then the
+-		 * differing groups won't be set (as with initgroups()). The solution
+-		 * is for the sysadmin not to give out the UID twice */
+-		if (getuid() != ses.authstate.pw_uid) {
+-			dropbear_exit("Couldn't	change user as non-root");
+-		}
+-	}
+-
+-	/* set env vars */
+-	addnewvar("USER", ses.authstate.pw_name);
+-	addnewvar("LOGNAME", ses.authstate.pw_name);
+-	addnewvar("HOME", ses.authstate.pw_dir);
+-	addnewvar("SHELL", get_user_shell());
+-	addnewvar("PATH", DEFAULT_PATH);
+ 	if (chansess->term != NULL) {
+ 		addnewvar("TERM", chansess->term);
+ 	}

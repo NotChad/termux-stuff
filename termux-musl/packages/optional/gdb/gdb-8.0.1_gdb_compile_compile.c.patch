@@ -1,0 +1,12 @@
+diff -uNr gdb-8.0.1/gdb/compile/compile.c gdb-8.0.1.mod/gdb/compile/compile.c
+--- gdb-8.0.1/gdb/compile/compile.c	2017-09-07 17:28:11.000000000 +0300
++++ gdb-8.0.1.mod/gdb/compile/compile.c	2018-12-21 19:44:12.783532116 +0200
+@@ -44,7 +44,7 @@
+ 
+ /* Initial filename for temporary files.  */
+ 
+-#define TMP_PREFIX "/tmp/gdbobj-"
++#define TMP_PREFIX "@TERMUX_PREFIX@/tmp/gdbobj-"
+ 
+ /* Hold "compile" commands.  */
+ 

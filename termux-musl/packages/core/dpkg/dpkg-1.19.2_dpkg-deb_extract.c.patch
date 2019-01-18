@@ -1,0 +1,18 @@
+diff -uNr dpkg-1.19.2/dpkg-deb/extract.c dpkg-1.19.2.mod/dpkg-deb/extract.c
+--- dpkg-1.19.2/dpkg-deb/extract.c	2018-10-08 01:05:06.000000000 +0300
++++ dpkg-1.19.2.mod/dpkg-deb/extract.c	2018-12-17 18:34:17.193437528 +0200
+@@ -321,14 +321,11 @@
+       else
+         internerr("unknown or missing tar action '%d'", taroption);
+ 
+-      if (taroption & DPKG_TAR_PERMS)
+-        command_add_arg(&cmd, "-p");
+       if (taroption & DPKG_TAR_NOMTIME)
+         command_add_arg(&cmd, "-m");
+ 
+       command_add_arg(&cmd, "-f");
+       command_add_arg(&cmd, "-");
+-      command_add_arg(&cmd, "--warning=no-timestamp");
+ 
+       m_dup2(p2[0],0);
+       close(p2[0]);

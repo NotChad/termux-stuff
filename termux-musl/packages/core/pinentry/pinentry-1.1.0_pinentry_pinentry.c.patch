@@ -1,0 +1,14 @@
+diff -uNr pinentry-1.1.0/pinentry/pinentry.c pinentry-1.1.0.mod/pinentry/pinentry.c
+--- pinentry-1.1.0/pinentry/pinentry.c	2017-12-03 18:13:15.000000000 +0200
++++ pinentry-1.1.0.mod/pinentry/pinentry.c	2018-12-20 20:11:11.757135760 +0200
+@@ -51,8 +51,8 @@
+ 
+ #include <assuan.h>
+ 
+-#include "memory.h"
+-#include "secmem-util.h"
++#include "../secmem/memory.h"
++#include "../secmem/secmem-util.h"
+ #include "argparse.h"
+ #include "pinentry.h"
+ #include "password-cache.h"
