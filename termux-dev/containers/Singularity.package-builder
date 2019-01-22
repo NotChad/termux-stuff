@@ -7,6 +7,11 @@ Package build environment for Termux (https://termux.com).
 Contains all necessary software, e.g. Android SDK and NDK, which
 may be required for building packages.
 
+Important: use container only in sandbox mode as it requires write
+access. Alternatively you can try option "--writable-tmpfs", but
+keep in mind that Termux build environment may eat more than 10 GB
+of space.
+
 %post
     export ANDROID_SDK_TOOLS_REVISION="4333796"
     export ANDROID_SDK_BUILD_TOOLS_VERSION="28.0.2"
@@ -52,3 +57,7 @@ may be required for building packages.
     export TERMUX_MAKE_PROCESSES=4
     export TERMUX_TOPDIR=/var/lib/termux-build
     exec /bin/bash -l
+
+%startscript
+    echo "Use command 'singularity run' to start container."
+    exit 1
