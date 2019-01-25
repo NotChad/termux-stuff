@@ -2,35 +2,11 @@
 
 An alternate build environment for Termux for creating packages linked with [Musl libc](https://www.musl-libc.org/).
 
+> THIS PROJECT IS DISCONTINUED !<br><br>
+It was just an experiment. Despite the fact that experiment was successful, [I](https://github.com/xeffyr) cannot continue to develop it. I have no desire|opportunity|time to deal with custom cross compiler, fixing build environment and various caveats and bugs hidden there. I'm not saying that porting and maintaining the package tree is a headache for one persion.<br>
+Package repository related to this project will be shutted down, it's dump can be found on the Internet Archive: https://archive.org/details/termux-musl-repository-25.01.2019.tar. Related docker image will be removed to, so if you decide to continue this project some things should be built manually.
+
 ## How to
-
-### Getting started
-
-#### For users:
-
-You need to install only Android application:
-
-1. Download the [Termux.Musl-v1.03.apk](https://github.com/xeffyr/termux-stuff/releases/download/base/Termux.Musl-v1.03.apk) file.
-1. Install it on your device either through file manager or ADB.
-
-#### For developers:
-
-For building packages you need a special build environment. It will be assumed that you are on Linux-based host with installed Docker.
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/xeffyr/termux-stuff
-   ```
-
-2. Setup and start environment (requires docker):
-   ```
-   cd termux-stuff/termux-musl
-   ./start-builder.sh
-   ```
-   Sometimes, a new docker image may be released. In this case you may need to install the updated image with this command:
-   ```
-   ./scripts/update-docker.sh
-   ```
 
 ### Building cross-compiler
 
