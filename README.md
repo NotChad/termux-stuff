@@ -27,4 +27,4 @@ A section with advanced modifications of Termux.
 * [termux-musl](./termux-musl)
 
   An experiment with building all Termux packages against [Musl libc](https://www.musl-libc.org/). Includes all necessary patches
-  and scripts for building cross-compilers as well as all necessary stuff for building packages.
+  and scripts for building cross-compilers as well as all necessary stuff for building packages. *Discontinued.*
