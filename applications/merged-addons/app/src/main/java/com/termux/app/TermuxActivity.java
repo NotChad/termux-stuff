@@ -744,16 +744,7 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                 return true;
             }
             case CONTEXTMENU_STYLING_ID: {
-                Intent stylingIntent = new Intent();
-                stylingIntent.setClassName("com.termux.styling", "com.termux.styling.TermuxStyleActivity");
-                try {
-                    startActivity(stylingIntent);
-                } catch (ActivityNotFoundException | IllegalArgumentException e) {
-                    // The startActivity() call is not documented to throw IllegalArgumentException.
-                    // However, crash reporting shows that it sometimes does, so catch it here.
-                    new AlertDialog.Builder(this).setMessage(R.string.styling_not_installed)
-                        .setPositiveButton(R.string.styling_install, (dialog, which) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("http://play.google.com/store/apps/details?id=com.termux.styling")))).setNegativeButton(android.R.string.cancel, null).show();
-                }
+                startActivity(new Intent(this, com.termux.styling.TermuxStyleActivity.class));
                 return true;
             }
             case CONTEXTMENU_HELP_ID:

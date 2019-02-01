@@ -28,4 +28,8 @@
         <item name="android:colorAccent">#212121</item>
     </style>
 
+    <style name="StylingAppTheme" parent="@android:style/Theme.Material.Light.Dialog.NoActionBar.MinWidth">
+        <item name="android:colorAccent">#212121</item>
+    </style>
+
 </resources>

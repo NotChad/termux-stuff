@@ -53,6 +53,14 @@
             android:resizeableActivity="true"
             android:label="@string/application_name" />
 
+
+        <activity
+            android:name="com.termux.styling.TermuxStyleActivity"
+            android:noHistory="true"
+            android:exported="false"
+            android:theme="@style/StylingAppTheme" >
+        </activity>
+
         <activity
             android:name="com.termux.filepicker.TermuxFileReceiverActivity"
             android:label="@string/application_name"
