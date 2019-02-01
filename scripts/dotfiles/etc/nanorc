@@ -1,0 +1,18 @@
+## Do case sensitive searches.
+set casesensitive
+
+## Don't wrap text.
+set nowrap
+
+## Use smooth scrolling.
+set smooth
+
+## Allow nano to be suspended.
+set suspend
+
+## Use spaces instead of tabs.
+set tabstospaces
+set tabsize 4
+
+## Enable sytax highlighting.
+include "/data/data/com.termux/files/usr/share/nano/*.nanorc"
