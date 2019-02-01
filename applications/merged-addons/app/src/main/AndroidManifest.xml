@@ -150,6 +150,35 @@
                   android:name="com.termux.app.TermuxOpenReceiver$ContentProvider" />
 
         <meta-data android:name="com.sec.android.support.multiwindow" android:value="true" />
+
+        <receiver
+            android:name="com.termux.widget.TermuxWidgetProvider"
+            android:label="@string/shortcut_widget_name" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/termux_appwidget_info" />
+        </receiver>
+
+        <activity
+            android:name="com.termux.widget.TermuxCreateShortcutActivity"
+            android:label="@string/single_shortcut_name">
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.termux.widget.TermuxLaunchShortcutActivity"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:exported="true"/>
+
+        <service
+            android:name="com.termux.widget.TermuxWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
 
 </manifest>
