@@ -5,6 +5,8 @@
 ##  Useful if you decide to clean your installation from
 ##  various third-party stuff.
 ##
+##  Dependencies: bash, busybox
+##
 
 : "${PREFIX:=/data/data/com.termux/files/usr}"
 comm -23 \
