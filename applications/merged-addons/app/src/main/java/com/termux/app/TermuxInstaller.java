@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.UserManager;
@@ -79,11 +80,13 @@ final class TermuxInstaller {
                         deleteFolder(STAGING_PREFIX_FILE);
                     }
 
-                    final byte[] buffer = new byte[8096];
+                    final byte[] buffer = new byte[8192];
                     final List<Pair<String, String>> symlinks = new ArrayList<>(50);
 
-                    final URL zipUrl = determineZipUrl();
-                    try (ZipInputStream zipInput = new ZipInputStream(zipUrl.openStream())) {
+                    final String bootstrapArchiveName = determineZipName();
+                    AssetManager assetManager = activity.getAssets();
+
+                    try (ZipInputStream zipInput = new ZipInputStream(assetManager.open(bootstrapArchiveName))) {
                         ZipEntry zipEntry;
                         while ((zipEntry = zipInput.getNextEntry()) != null) {
                             if (zipEntry.getName().equals("SYMLINKS.txt")) {
@@ -168,9 +171,9 @@ final class TermuxInstaller {
     }
 
     /** Get bootstrap zip url for this systems cpu architecture. */
-    private static URL determineZipUrl() throws MalformedURLException {
+    private static String determineZipName() {
         String archName = determineTermuxArchName();
-        return new URL("https://termux.net/bootstrap/bootstrap-" + archName + ".zip");
+        return "bootstrap-" + archName;
     }
 
     private static String determineTermuxArchName() {
