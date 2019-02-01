@@ -1,3 +1,11 @@
+* **[dotfiles](./dotfiles)**
+
+  Various scripts and configuration files.
+
+* **[termux-buildapk](./termux-buildapk)**
+
+  Utilities for creating and building simple Android applications in Termux.
+
 * **[termux-builder](./termux-builder)**
 
   An attempt to use Termux build environment via QEMU on device.
