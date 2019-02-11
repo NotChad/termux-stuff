@@ -1,0 +1,34 @@
+##
+##  Main (socks proxy) configuration.
+##
+
+# Do not run as daemon.
+RunAsDaemon 0
+
+# SOCKS proxy on localhost.
+SOCKSPort 127.0.0.1:9050
+
+# Log to standard error.
+Log notice stderr
+
+##
+##  Relay configuration.
+##
+
+# Relay port. Should be forwarded if under NAT.
+#ORPort 0.0.0.0:9001
+
+# Directory port. Should be forwarded if under NAT.
+# Do not enable if you have low bandwidth.
+#DirPort 0.0.0.0:9030
+
+# Relay name.
+Nickname termux
+
+# Limit relay bandwidth.
+RelayBandwidthRate 256 KBytes
+RelayBandwidthBurst 512 KBytes
+
+# Do not be an exit relay.
+ExitRelay 0
+ExitPolicy reject *:*

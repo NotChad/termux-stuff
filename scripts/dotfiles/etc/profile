@@ -1,0 +1,26 @@
+# Basic environment.
+export HOME="/data/data/com.termux/files/home"
+export PREFIX="/data/data/com.termux/files/usr"
+export LOCAL_PREFIX="$HOME/.local"
+export PATH="$LOCAL_PREFIX/bin:$HOME/bin:$PREFIX/bin:$PREFIX/bin/applets"
+export LD_LIBRARY_PATH="$LOCAL_PREFIX/lib:$PREFIX/lib"
+export TMPDIR="$PREFIX/tmp"
+export EDITOR="$PREFIX/bin/micro"
+
+# Use strict umask for privacy.
+umask 0077
+
+# Load additional profiles.
+if [ -d "$PREFIX/etc/profile.d" ]; then
+    for profile in "$PREFIX/etc/profile.d"/*.sh; do
+        if [ -r "$profile" ]; then
+            . "$profile"
+        fi
+    done
+    unset profile
+fi
+
+# Load system bashrc.
+if test "$PS1" && test "$BASH" && test -z ${POSIXLY_CORRECT+x} && test -r "$PREFIX/etc/bash.bashrc"; then
+    . "$PREFIX/etc/bash.bashrc"
+fi
