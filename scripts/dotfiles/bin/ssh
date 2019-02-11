@@ -1,0 +1,12 @@
+#!/data/data/com.termux/files/usr/bin/bash
+##
+##  Increase receive window buffer if using Dropbear SSH.
+##  Makes file transfers faster.
+##
+
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+if [ -x "$PREFIX/bin/sshd" ]; then
+    exec "$PREFIX/bin/ssh" "$@"
+else
+    exec "$PREFIX/bin/ssh" -W 524288 "$@"
+fi
