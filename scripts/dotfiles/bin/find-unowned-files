@@ -15,7 +15,12 @@ comm -23 \
         grep -v "$PREFIX/etc/apt/preferences.d$" | \
         grep -v "$PREFIX/run$" | \
         grep -v "$PREFIX/tmp$" | \
+        grep -v "$PREFIX/var/cache$" | \
+        grep -v "$PREFIX/var/cache/apt$" | \
+        grep -v "$PREFIX/var/lib/apt$" | \
+        grep -v "$PREFIX/var/lib/apt/lists$" | \
         grep -v "$PREFIX/var/lib/dpkg" | \
+        grep -v "$PREFIX/var/log/apt$" | \
       sort) \
     <(cat $PREFIX/var/lib/dpkg/info/*.list | \
         grep $PREFIX | \
@@ -23,5 +28,10 @@ comm -23 \
         grep -v "$PREFIX/etc/apt/preferences.d$" | \
         grep -v "$PREFIX/run$" | \
         grep -v "$PREFIX/tmp$" | \
+        grep -v "$PREFIX/var/cache$" | \
+        grep -v "$PREFIX/var/cache/apt$" | \
+        grep -v "$PREFIX/var/lib/apt$" | \
+        grep -v "$PREFIX/var/lib/apt/lists$" | \
         grep -v "$PREFIX/var/lib/dpkg" | \
+        grep -v "$PREFIX/var/log/apt$" | \
       sort | uniq)
