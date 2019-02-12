@@ -15,11 +15,7 @@ comm -23 \
         grep -v "$PREFIX/etc/apt/preferences.d$" | \
         grep -v "$PREFIX/run$" | \
         grep -v "$PREFIX/tmp$" | \
-        grep -v "$PREFIX/var/lib/dpkg/info" | \
-        grep -v "$PREFIX/var/lib/dpkg/lock" | \
-        grep -v "$PREFIX/var/lib/dpkg/status" | \
-        grep -v "$PREFIX/var/lib/dpkg/triggers" | \
-        grep -v "$PREFIX/var/lib/dpkg/updates" | \
+        grep -v "$PREFIX/var/lib/dpkg" | \
       sort) \
     <(cat $PREFIX/var/lib/dpkg/info/*.list | \
         grep $PREFIX | \
@@ -27,9 +23,5 @@ comm -23 \
         grep -v "$PREFIX/etc/apt/preferences.d$" | \
         grep -v "$PREFIX/run$" | \
         grep -v "$PREFIX/tmp$" | \
-        grep -v "$PREFIX/var/lib/dpkg/info" | \
-        grep -v "$PREFIX/var/lib/dpkg/lock" | \
-        grep -v "$PREFIX/var/lib/dpkg/status" | \
-        grep -v "$PREFIX/var/lib/dpkg/triggers" | \
-        grep -v "$PREFIX/var/lib/dpkg/updates" | \
+        grep -v "$PREFIX/var/lib/dpkg" | \
       sort | uniq)
