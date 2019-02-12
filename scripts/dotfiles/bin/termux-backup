@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ##
 ##  Backup and restore Termux ($HOME or $PREFIX).
-##  Dependencies: bash, busybox, openssh (optional), restic
+##  Dependencies: bash, busybox, grep, openssh (optional), restic
 ##
 
 set -e -u
@@ -40,15 +40,21 @@ perform_restore() {
     if "$PROCESS_HOME"; then
         echo "[*] Fetching data of snapshot '$SNAPSHOT_TO_RESTORE' with tag '$TERMUX_HOME_TAG'..." >&2
         home_tmp_dir=$(mktemp -d -p "/data/data/com.termux/files" "restore.XXXXXXXX")
+
+        trap "rm -rf "$home_tmp_dir" > /dev/null 2>&1" INT QUIT EXIT
         if ! restic restore --tag "$TERMUX_HOME_TAG" --target "$home_tmp_dir" "$SNAPSHOT_TO_RESTORE"; then
             exit 1
         fi
+        trap - INT QUIT EXIT
     else
         echo "[*] Fetching data of snapshot '$SNAPSHOT_TO_RESTORE' with tag '$TERMUX_PREFIX_TAG'..." >&2
         prefix_tmp_dir=$(mktemp -d -p "/data/data/com.termux/files" "restore.XXXXXXXX")
+
+        trap "rm -rf "$prefix_tmp_dir" > /dev/null 2>&1" INT QUIT EXIT
         if ! restic restore --tag "$TERMUX_PREFIX_TAG" --target "$prefix_tmp_dir" "$SNAPSHOT_TO_RESTORE"; then
             exit 1
         fi
+        trap - INT QUIT EXIT
     fi
 
     # Actual restoring is done in subshell since variables
@@ -177,16 +183,16 @@ show_usage() {
         echo "      Backup or restore home directory"
         echo "      instead of prefix."
         echo
-        echo "  --restore  (snapshot)"
+        echo "  -r, --restore (snapshot)"
         echo
         echo "      Enable restore mode. Will completely"
         echo "      overwrite files by ones from backup."
         echo
         echo "      You can restore a specific snapshot if its"
-        echo "      name (hash) was specified. If not - a latest"
+        echo "      name (hash) was specified. If not, a latest"
         echo "      snapshot will be used."
         echo
-        echo "  --help"
+        echo "  -h, --help"
         echo
         echo "      Show this help message."
         echo
@@ -205,41 +211,48 @@ show_usage() {
     } >&2
 }
 
-set +u
-while getopts ":-:" opt; do
-    case "$opt" in
-        -)
-            case "$OPTARG" in
-                help)
-                    show_usage
-                    exit 0
-                    ;;
-                home)
-                    PROCESS_HOME=true
-                    ;;
-                restore)
-                    RESTORE_MODE=true
-                    if [ -n "${!OPTIND}" ] && [[ ${!OPTIND} != -* ]]; then
-                        SNAPSHOT_TO_RESTORE=${!OPTIND}
-                        OPTIND=$((OPTIND + 1))
-                    fi
-                    ;;
-                *)
-                    echo "[!] Invalid option '$OPTARG'." >&2
-                    show_usage
+while (($# > 0)); do
+    case "$1" in
+        --home)
+            PROCESS_HOME=true
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -r|--restore)
+            RESTORE_MODE=true
+            if [ $# -gt 1 ] && [[ $2 != -* ]]; then
+                SNAPSHOT_TO_RESTORE=$2
+                shift 1
+
+                if ! grep -qP '^(?:[a-f0-9]{8,64}|latest)$' <(echo "$SNAPSHOT_TO_RESTORE"); then
+                    {
+                        echo "[!] Invalid snapshot ID specified."
+                        echo
+                        echo "    Valid snapshot ID consist of 8-64 lowercase"
+                        echo "    letters from range [a-f] and numbers [0-9]."
+                        echo
+                        echo "    If you specify snapshot ID as 'latest', then"
+                        echo "    latest snapshot will be used."
+                        echo
+                    } >&2
                     exit 1
-                    ;;
-            esac
+                fi
+            fi
             ;;
         *)
-            echo "[!] Invalid option '-$OPTARG'." >&2
+            if [[ $1 == -* ]]; then
+                echo "[!] Invalid option '$1'." >&2
+            else
+                echo "[!] Unexpected argument '$1'." >&2
+            fi
             show_usage
             exit 1
             ;;
     esac
+    shift 1
 done
-shift $((OPTIND - 1))
-set -u
 
 if [ -z "$(command -v restic)" ]; then
     echo "[!] Error: restic is not installed." >&2
