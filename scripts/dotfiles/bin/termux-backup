@@ -182,7 +182,7 @@ show_usage() {
         echo "      Enable restore mode. Will completely"
         echo "      overwrite files by ones from backup."
         echo
-        echo "      You can restore a specific snapshot if it's"
+        echo "      You can restore a specific snapshot if its"
         echo "      name (hash) was specified. If not - a latest"
         echo "      snapshot will be used."
         echo

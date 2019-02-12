@@ -4,7 +4,7 @@ An alternate build environment for Termux for creating packages linked with [Mus
 
 > THIS PROJECT IS DISCONTINUED !<br><br>
 It was just an experiment. Despite the fact that experiment was successful, [I](https://github.com/xeffyr) cannot continue to develop it. I have no desire|opportunity|time to deal with custom cross compiler, fixing build environment and various caveats and bugs hidden there. I'm not saying that porting and maintaining the package tree is a headache for one persion.<br>
-Package repository related to this project will be shutted down, it's dump can be found on the Internet Archive: https://archive.org/details/termux-musl-repository-25.01.2019.tar. Related docker image will be removed to, so if you decide to continue this project some things should be built manually.
+Package repository related to this project will be shutted down, its dump can be found on the Internet Archive: https://archive.org/details/termux-musl-repository-25.01.2019.tar. Related docker image will be removed to, so if you decide to continue this project some things should be built manually.
 
 ## How to
 
@@ -15,7 +15,7 @@ Usually, there no need to rebuild cross-compiler provided with docker image. But
 ./scripts/cross-toolchain/build-toolchain.sh
 ```
 
-By default, cross compiler is built for AArch64. If you need a different architecture, export environment variable `TERMUX_ARCH`. It's value should be a one of: aarch64, arm, i686, x86_64. Example for building ARM cross-compiler:
+By default, cross compiler is built for AArch64. If you need a different architecture, export environment variable `TERMUX_ARCH`. Its value should be a one of: aarch64, arm, i686, x86_64. Example for building ARM cross-compiler:
 ```
 TERMUX_ARCH=arm ./scripts/cross-toolchain/build-toolchain.sh
 ```

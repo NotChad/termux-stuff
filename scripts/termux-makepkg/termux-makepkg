@@ -892,7 +892,7 @@ build_package() {
             info_mesg " * Verifying SHA-256 for '${file_name}'"
             verify_sha256 "${file_path}" "${PACKAGE_SOURCES_SHA256[i]}"
 
-            ## Handle file in a specific way depending on it's type.
+            ## Handle file in a specific way depending on its type.
             local mime_type
             mime_type=$(file -biL "${file_path}")
 

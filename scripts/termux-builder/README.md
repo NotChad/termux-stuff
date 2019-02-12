@@ -1,7 +1,7 @@
 Termux package builder
 ======================
 
-This is a [termux-packages](https://github.com/termux/termux-packages) build environment that can be used in Termux on device. It consists of Ubuntu, Android SDK and NDK, like the docker image for termux-packages. Since Termux Builder can be used only on x86_64 machines, it use a qemu-user-x86_64 to make possible it's usage on all architectures at the cost of performance.
+This is a [termux-packages](https://github.com/termux/termux-packages) build environment that can be used in Termux on device. It consists of Ubuntu, Android SDK and NDK, like the docker image for termux-packages. Since Termux Builder can be used only on x86_64 machines, it use a qemu-user-x86_64 to make possible its usage on all architectures at the cost of performance.
 
 Note: this project was created by request in https://github.com/termux/termux-packages/issues/2914.
 
@@ -26,7 +26,7 @@ Wait until it finishes.
 
 ## How to use
 
-It's usage is simple. For example, to build package 'libandroid-support':
+Its usage is simple. For example, to build package 'libandroid-support':
 ```
 $ termux-builder
 builder@localhost:~/termux-packages$ ./build-package.sh -f libandroid-support
